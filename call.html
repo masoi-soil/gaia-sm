@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CALL SM">
+<meta name="theme-color" content="#0b0d10">
+<title>SM よびだし / CALL SM</title>
+<style>
+:root{
+  --bg:#0b0d10; --panel:#171c22; --line:#2c343e; --tx:#eef3f8; --tx2:#93a1b0;
+  --drink:#22c55e; --sound:#ef4444;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{height:100%}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--tx);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+  overflow:hidden;overscroll-behavior:none}
+
+/* ===== 待機画面 ===== */
+#home{height:100%;display:flex;flex-direction:column;padding:calc(10px + var(--sat)) 12px calc(10px + var(--sab))}
+.top{display:flex;align-items:center;gap:10px;padding:2px 4px 10px}
+.top .ttl{font-size:14px;font-weight:800;letter-spacing:.08em;color:var(--tx2)}
+.top .now{margin-left:auto;font-size:13px;color:var(--tx2);text-align:right;line-height:1.35;max-width:52%;overflow:hidden}
+.gear{background:none;border:none;color:var(--tx2);font-size:20px;padding:6px 8px;cursor:pointer}
+
+.btns{flex:1;display:flex;flex-direction:column;gap:12px;min-height:0}
+.big{flex:1;border:none;border-radius:22px;color:#04140a;font-family:inherit;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  padding:16px;touch-action:manipulation;position:relative;overflow:hidden}
+.big:active{transform:scale(.985);filter:brightness(.92)}
+.big .ic{font-size:clamp(46px,15vh,86px);line-height:1}
+.big .ja{font-size:clamp(26px,5.2vh,40px);font-weight:900;letter-spacing:.02em}
+.big .en{font-size:clamp(14px,2.2vh,19px);font-weight:800;letter-spacing:.14em;opacity:.72}
+#bDrink{background:var(--drink)}
+#bSound{background:var(--sound);color:#1a0505}
+.hint{text-align:center;color:var(--tx2);font-size:12px;padding-top:10px;line-height:1.5}
+
+/* ===== 呼び出し中（全画面アラート） ===== */
+#alert{position:fixed;inset:0;z-index:100;display:none;flex-direction:column;
+  padding:calc(16px + var(--sat)) 16px calc(16px + var(--sab));text-align:center}
+#alert.on{display:flex}
+#alert.flash{animation:fl .55s steps(1,end) infinite}
+@keyframes fl{0%,100%{filter:brightness(1)}50%{filter:brightness(.42)}}
+.aTop{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#0b0d10}
+.aIc{font-size:clamp(56px,17vh,110px);line-height:1}
+.aJa{font-size:clamp(30px,6vh,48px);font-weight:900;line-height:1.2}
+.aEn{font-size:clamp(15px,2.4vh,21px);font-weight:800;letter-spacing:.12em;opacity:.75}
+.aSub{font-size:clamp(15px,2.4vh,20px);font-weight:800;opacity:.85;margin-top:6px}
+.aTime{font-size:clamp(38px,9vh,64px);font-weight:900;font-variant-numeric:tabular-nums;line-height:1}
+.aSend{font-size:clamp(14px,2.2vh,18px);font-weight:800;margin-top:10px;padding:7px 16px;border-radius:999px;
+  background:rgba(0,0,0,.26);color:#fff;min-height:0}
+.aSend.ng{background:#111;color:#ffd4d4}
+.aBtns{display:flex;flex-direction:column;gap:10px}
+.aBtns button{font-family:inherit;font-weight:900;border-radius:16px;padding:18px;font-size:19px;cursor:pointer;
+  min-height:62px;border:3px solid rgba(0,0,0,.28);background:rgba(255,255,255,.94);color:#0b0d10;touch-action:manipulation}
+.aBtns button.line{background:rgba(0,0,0,.3);color:#fff;border-color:rgba(255,255,255,.35);font-size:17px;min-height:56px}
+.aBtns button:active{transform:scale(.98)}
+
+/* ===== 設定 ===== */
+#cfg{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.75);display:none;align-items:flex-end}
+#cfg.on{display:flex}
+.sheet{background:var(--panel);border-radius:18px 18px 0 0;width:100%;max-height:88vh;overflow-y:auto;
+  padding:16px 16px calc(16px + var(--sab));border-top:1px solid var(--line)}
+.sheet h3{margin:0 0 12px;font-size:17px}
+label{display:block;font-size:13px;color:var(--tx2);margin:14px 0 6px;font-weight:700}
+input{width:100%;background:#0f1318;color:var(--tx);border:1px solid var(--line);border-radius:11px;
+  padding:13px;font-size:16px;font-family:inherit;min-height:48px}
+.sbtn{width:100%;margin-top:14px;border-radius:12px;border:1px solid var(--line);background:#222a33;color:var(--tx);
+  padding:14px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;min-height:50px}
+.sbtn.pri{background:var(--drink);color:#04140a;border-color:var(--drink)}
+.note{color:var(--tx2);font-size:12.5px;line-height:1.7;margin-top:12px}
+.log{margin-top:8px;border-top:1px solid var(--line);padding-top:10px}
+.log div{font-size:13px;color:var(--tx2);padding:7px 0;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.log div:last-child{border-bottom:none}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- 待機 -->
+<div id="home">
+  <div class="top">
+    <button class="gear" onclick="openCfg()">⚙</button>
+    <div class="ttl">CALL SM</div>
+    <div class="now" id="nowAct"></div>
+  </div>
+  <div class="btns">
+    <button class="big" id="bDrink" onclick="fire('drink')">
+      <span class="ic">🥤</span>
+      <span class="ja">ドリンク</span>
+      <span class="en">DRINK</span>
+    </button>
+    <button class="big" id="bSound" onclick="fire('sound')">
+      <span class="ic">🔊</span>
+      <span class="ja">音のトラブル</span>
+      <span class="en">SOUND ISSUE</span>
+    </button>
+  </div>
+  <div class="hint">押すと画面が光ってSMを呼びます<br>Tap to call the stage manager</div>
+</div>
+
+<!-- 呼び出し中 -->
+<div id="alert">
+  <div class="aTop">
+    <div class="aIc" id="aIc">🥤</div>
+    <div class="aJa" id="aJa">ドリンク</div>
+    <div class="aEn" id="aEn">DRINK</div>
+    <div class="aSub" id="aAct"></div>
+    <div class="aSub">SMを呼んでいます</div>
+    <div class="aTime" id="aTime">0:00</div>
+    <div class="aSend" id="aSend"></div>
+  </div>
+  <div class="aBtns">
+    <button class="line hide" id="btnRetry" onclick="retryPush()">LINEに再送する</button>
+    <button class="line hide" id="btnLineApp" onclick="sendLineApp()">LINEアプリで送る</button>
+    <button onclick="clearCall()">SM対応中 / DONE</button>
+  </div>
+</div>
+
+<!-- 設定 -->
+<div id="cfg" onclick="if(event.target.id==='cfg')closeCfg()">
+  <div class="sheet">
+    <h3>設定（SM用）</h3>
+    <label>現在の演者名（任意）</label>
+    <input id="inAct" placeholder="例: VARANOID">
+    <label>ステージ名</label>
+    <input id="inStage" placeholder="メインステージ">
+
+    <label>LINE通知の中継URL（GASのウェブアプリURL）</label>
+    <input id="inGas" placeholder="https://script.google.com/macros/s/..../exec">
+    <label>合言葉（中継スクリプトの SECRET_KEY と同じ文字列）</label>
+    <input id="inKey" placeholder="合言葉を入力">
+
+    <button class="sbtn pri" onclick="saveCfg()">保存</button>
+    <button class="sbtn" onclick="testPush()">LINEに接続テスト</button>
+    <div id="testResult" class="note"></div>
+    <button class="sbtn" onclick="testFire()">画面の点滅をテスト</button>
+    <div class="note">
+      <b>置き方</b><br>
+      ブースに1台固定して、この画面を開いたままにしてください。押されると画面全体が点滅します。<br><br>
+      <b>爆音のブースでは音は聞こえません。</b>だから光で知らせます。SMから見える向きに立てて置いてください。<br><br>
+      <b>この端末にLINEは不要です。</b>電話番号もアカウントも要りません。Wi-Fiが繋がっていれば通知は飛びます。<br><br>
+      <b>LINE通知はWi-Fiが繋がっている時だけ動きます。</b>切れても画面の点滅は必ず動くので、そちらが本体です。<br><br>
+      Wi-Fiの自動接続をオンにして、スリープ時もWi-Fiが切れない設定にしておいてください。<br><br>
+      <b>「ホーム画面に追加」</b>すると全画面で起動して、誤操作で他の画面に飛びません。<br><br>
+      画面が消えないよう、端末の自動ロックをオフにしてください。
+    </div>
+    <div class="log" id="logList"></div>
+    <button class="sbtn" onclick="closeCfg()">閉じる</button>
+  </div>
+</div>
+
+<script>
+var KEY='sm-call-v2';
+var C={act:'',stage:'メインステージ',gas:'',key:'',logs:[]};
+try{var r=localStorage.getItem(KEY); if(r) C=Object.assign(C,JSON.parse(r));}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(C));}catch(e){}}
+
+var TYPE={
+  drink:{ic:'🥤', ja:'ドリンク',     en:'DRINK',       col:'#22c55e', txt:'#04140a'},
+  sound:{ic:'🔊', ja:'音のトラブル', en:'SOUND ISSUE', col:'#ef4444', txt:'#1a0505'}
+};
+var cur=null, t0=0, tick=null, actx=null, beeper=null, vib=null, wake=null;
+
+function two(n){return (n<10?'0':'')+n;}
+function hhmm(){var d=new Date();return two(d.getHours())+':'+two(d.getMinutes());}
+
+// ---- 呼び出し開始 ----
+function fire(kind){
+  if(cur) return;
+  cur=kind; t0=Date.now();
+  var t=TYPE[kind];
+  var a=document.getElementById('alert');
+  a.style.background=t.col;
+  document.getElementById('aIc').textContent=t.ic;
+  document.getElementById('aJa').textContent=t.ja;
+  document.getElementById('aEn').textContent=t.en;
+  document.getElementById('aJa').style.color=t.txt;
+  document.getElementById('aAct').textContent=C.act?('（'+C.act+'）'):'';
+  document.getElementById('aTime').textContent='0:00';
+  a.classList.add('on','flash');
+  var m=document.querySelector('meta[name="theme-color"]'); if(m)m.setAttribute('content',t.col);
+
+  // 中継が未設定の端末でだけ、LINEアプリを開く手動送信を出す
+  document.getElementById('btnLineApp').classList.toggle('hide', !!C.gas);
+  startTick(); startBeep(); startVib();
+  C.logs.push({t:hhmm(), kind:kind, act:C.act||'', at:Date.now()});
+  if(C.logs.length>60) C.logs=C.logs.slice(-60);
+  save(); renderLog();
+  pushLine(kind, 0);
+}
+
+// ---- LINEへ送信（届かなくても点滅は止めない）----
+var sendTries=0;
+function gasURL(type, extra){
+  if(!C.gas) return null;
+  var u = C.gas + (C.gas.indexOf('?')<0?'?':'&')
+    + 'key=' + encodeURIComponent(C.key||'')
+    + '&type=' + encodeURIComponent(type)
+    + '&stage=' + encodeURIComponent(C.stage||'')
+    + '&act=' + encodeURIComponent(C.act||'')
+    + '&t=' + Date.now();
+  if(extra) u += extra;
+  return u;
+}
+function setSend(state, msg){
+  var el=document.getElementById('aSend'); if(!el) return;
+  el.classList.toggle('ng', state==='ng');
+  el.textContent = msg;
+  document.getElementById('btnRetry').classList.toggle('hide', state!=='ng');
+}
+function pushLine(kind, tryNo){
+  if(!C.gas){ setSend('','LINE通知は未設定'); return; }
+  sendTries = tryNo;
+  setSend('', 'LINEに送信中…');
+  var url = gasURL(kind);
+  fetch(url, {method:'GET'})
+    .then(function(r){ return r.text(); })
+    .then(function(t){
+      if(String(t).indexOf('sent')>=0) setSend('ok','✓ LINEに通知しました');
+      else { setSend('ng','LINE送信エラー: '+String(t).slice(0,40)); }
+    })
+    .catch(function(){
+      // CORSで読めない場合でも送信自体は通っていることがある
+      fetch(url, {mode:'no-cors'})
+        .then(function(){ setSend('', 'LINEに送信しました（応答は確認できず）'); })
+        .catch(function(){
+          if(tryNo < 2){ setTimeout(function(){ pushLine(kind, tryNo+1); }, 4000); setSend('','再送しています…'); }
+          else setSend('ng','LINEに送れません（圏外の可能性）');
+        });
+    });
+}
+function retryPush(){ if(cur) pushLine(cur, 0); }
+function testFire(){ closeCfg(); setTimeout(function(){fire('drink');},250); }
+
+function startTick(){
+  clearInterval(tick);
+  tick=setInterval(function(){
+    var s=Math.floor((Date.now()-t0)/1000);
+    document.getElementById('aTime').textContent=Math.floor(s/60)+':'+two(s%60);
+  },500);
+}
+
+// ---- 音（ブースでは聞こえない前提の補助）----
+function startBeep(){
+  try{
+    var AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+    if(!actx) actx=new AC();
+    if(actx.state==='suspended') actx.resume();
+    stopBeep();
+    beeper=setInterval(function(){
+      if(!actx) return;
+      var o=actx.createOscillator(), g=actx.createGain();
+      o.type='square'; o.frequency.value=(cur==='sound'?1180:880);
+      g.gain.setValueAtTime(0.0001,actx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.35,actx.currentTime+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+0.28);
+      o.connect(g); g.connect(actx.destination);
+      o.start(); o.stop(actx.currentTime+0.3);
+    },700);
+  }catch(e){}
+}
+function stopBeep(){ clearInterval(beeper); beeper=null; }
+
+// ---- バイブ（Androidのみ。iOSは非対応）----
+function startVib(){
+  if(!navigator.vibrate) return;
+  stopVib();
+  navigator.vibrate([400,180,400]);
+  vib=setInterval(function(){ navigator.vibrate([400,180,400]); },1400);
+}
+function stopVib(){ clearInterval(vib); vib=null; if(navigator.vibrate) navigator.vibrate(0); }
+
+// ---- 解除 ----
+function clearCall(){
+  var s=Math.floor((Date.now()-t0)/1000);
+  if(C.logs.length) C.logs[C.logs.length-1].wait=s;
+  save(); renderLog();
+  // 対応済みをLINEにも流す（複数のSMが同時に走るのを防ぐ）
+  if(C.gas){
+    var u = gasURL('done', '&wait=' + encodeURIComponent(Math.floor(s/60)+':'+two(s%60)));
+    try{ fetch(u,{method:'GET'}).catch(function(){ fetch(u,{mode:'no-cors'}).catch(function(){}); }); }catch(e){}
+  }
+  cur=null;
+  clearInterval(tick); stopBeep(); stopVib();
+  var a=document.getElementById('alert');
+  a.classList.remove('on','flash');
+  var m=document.querySelector('meta[name="theme-color"]'); if(m)m.setAttribute('content','#0b0d10');
+}
+
+// ---- LINEアプリを開いて手動で送る（中継が使えない時の保険）----
+function sendLineApp(){
+  var t=TYPE[cur]||TYPE.drink;
+  var msg='【'+(C.stage||'ステージ')+' '+hhmm()+'】\n'+
+          '演者からの呼び出し: '+t.ja+
+          (C.act?('\n演者: '+C.act):'')+
+          '\nブースまでお願いします';
+  var url='https://line.me/R/msg/text/?'+encodeURIComponent(msg);
+  try{ window.open(url,'_blank'); }catch(e){ location.href=url; }
+}
+
+// ---- 設定 ----
+function openCfg(){
+  document.getElementById('inAct').value=C.act||'';
+  document.getElementById('inStage').value=C.stage||'';
+  document.getElementById('inGas').value=C.gas||'';
+  document.getElementById('inKey').value=C.key||'';
+  renderLog();
+  document.getElementById('cfg').classList.add('on');
+}
+function closeCfg(){ document.getElementById('cfg').classList.remove('on'); }
+function saveCfg(){
+  C.act=document.getElementById('inAct').value.trim();
+  C.stage=document.getElementById('inStage').value.trim()||'メインステージ';
+  C.gas=document.getElementById('inGas').value.trim();
+  C.key=document.getElementById('inKey').value.trim();
+  save(); renderNow();
+  document.getElementById('testResult').textContent='保存しました';
+}
+// 接続テスト
+function testPush(){
+  var el=document.getElementById('testResult');
+  C.gas=document.getElementById('inGas').value.trim();
+  C.key=document.getElementById('inKey').value.trim();
+  save();
+  if(!C.gas){ el.textContent='中継URLを入力してください'; return; }
+  el.textContent='テスト送信中…';
+  var url = gasURL('drink');
+  fetch(url,{method:'GET'}).then(function(r){return r.text();}).then(function(t){
+    if(String(t).indexOf('sent')>=0) el.textContent='✓ 成功。LINEグループを確認してください';
+    else el.textContent='✗ ' + String(t).slice(0,80);
+  }).catch(function(){
+    fetch(url,{mode:'no-cors'}).then(function(){
+      el.textContent='送信は通ったはずです。LINEグループに届いたか確認してください';
+    }).catch(function(){ el.textContent='✗ 届きません。URLと電波を確認してください'; });
+  });
+}
+function renderNow(){
+  document.getElementById('nowAct').textContent = C.act ? ('演奏中: '+C.act) : '';
+}
+function renderLog(){
+  var el=document.getElementById('logList');
+  if(!C.logs.length){ el.innerHTML='<div>呼び出しの記録はまだありません</div>'; return; }
+  el.innerHTML = C.logs.slice(-12).reverse().map(function(l){
+    return '<div>'+l.t+'　'+(TYPE[l.kind]?TYPE[l.kind].ja:l.kind)+
+      (l.act?('　'+l.act):'')+
+      (l.wait!=null?('　対応まで '+Math.floor(l.wait/60)+':'+two(l.wait%60)):'　未対応')+'</div>';
+  }).join('');
+}
+
+// ---- 画面を消さない ----
+async function keepAwake(){
+  try{
+    if('wakeLock' in navigator){
+      wake = await navigator.wakeLock.request('screen');
+      document.addEventListener('visibilitychange', async function(){
+        if(document.visibilityState==='visible'){
+          try{ wake = await navigator.wakeLock.request('screen'); }catch(e){}
+        }
+      });
+    }
+  }catch(e){}
+}
+document.addEventListener('click', function once(){
+  keepAwake();
+  try{ var AC=window.AudioContext||window.webkitAudioContext; if(AC&&!actx){actx=new AC(); actx.resume();} }catch(e){}
+  document.removeEventListener('click', once);
+});
+
+renderNow(); renderLog();
+</script>
+</body>
+</html>
