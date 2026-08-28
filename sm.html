@@ -152,7 +152,7 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
     <div class="badge wr hide" id="finBadge"></div>
     <div style="flex:1"></div>
     <span class="sub" id="syncTag" style="font-size:12px">同期オフ</span>
-    <span class="sub" style="font-size:11px;opacity:.6">v7</span>
+    <span class="sub" style="font-size:11px;opacity:.6">v8</span>
     <button class="iconbtn gh" id="themeBtn" onclick="toggleTheme()" title="昼夜切替">☀</button>
     <button class="iconbtn gh" onclick="view('setup')">設定</button>
   </div>
@@ -165,10 +165,10 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
   <div id="v-run">
     <!-- 統括モード: 現場からの報告 -->
     <div class="card hide" id="reportCard" style="margin-bottom:12px">
-      <h2><span>現場からの報告</span><span class="sub" id="silenceTag">—</span></h2>
+      <h2><span>最近の動き</span><span class="sub" id="silenceTag">—</span></h2>
       <div id="rxList"></div>
       <div class="pad" id="rxAuto" style="border-top:1px solid var(--line)">
-        <div class="note">共有がオンなので、打刻・トラブル・演者呼び出しは<b>自動でここに入ります。</b>貼り付けは要りません。</div>
+        <div class="note">誰が打刻・記録したか、演者から呼び出しがあったかが<b>ここに流れます。</b></div>
       </div>
       <div class="pad hide" id="rxManual" style="border-top:1px solid var(--line)">
         <div class="note" style="margin-bottom:8px">共有がオフです。LINEで届いた報告文を貼れば、ここに反映できます。</div>
@@ -350,7 +350,7 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
         <button class="gh" onclick="resetAll()">記録を全消去</button>
         <input type="file" id="imp" class="hide" accept=".json" onchange="importJSON(this)">
       </div>
-      <div class="pad note"><b style="font-size:15px;color:var(--live)">バージョン <span id="verTag">v7</span></b><br>全員が同じバージョンか確認してください。違っていたら、そのページを再読み込みしてください。<br><br>データはこの端末のブラウザに自動保存されます。オフラインでも動作します。当日は機内モードでも使えます。</div>
+      <div class="pad note"><b style="font-size:15px;color:var(--live)">バージョン <span id="verTag">v8</span></b><br>全員が同じバージョンか確認してください。違っていたら、そのページを再読み込みしてください。<br><br>データはこの端末のブラウザに自動保存されます。オフラインでも動作します。当日は機内モードでも使えます。</div>
     </div>
   </div>
 </main>
@@ -771,9 +771,9 @@ var MANUAL = [
 
 // ===== state =====
 var S = {stages:[], logs:[], cur:0, mode:'lead', reports:[], lastRx:null, startDate:'2026-09-19',
-  sync:{url:'',key:'',dev:'',last:0,outbox:[],on:true,lastOk:null}, roleDev:'',
+  sync:{url:'',key:'',dev:'',last:0,outbox:[],on:true,lastOk:null}, roleDev:'', feed:[],
   cfg:{change:15, warn:15, esc:30, silence:30}};
-var APP_VERSION = 'v7';
+var APP_VERSION = 'v8';
 var KEY = 'sm-dash-v4';
 
 function save(){ try{localStorage.setItem(KEY, JSON.stringify(S));}catch(e){} }
@@ -791,6 +791,7 @@ function load(){
   if(!S.sync) S.sync = {url:'',key:'',dev:'',last:0,outbox:[],on:true,lastOk:null};
   if(!S.sync.outbox) S.sync.outbox = [];
   if(S.roleDev===undefined) S.roleDev='';
+  if(!S.feed) S.feed=[];
 }
 
 // ===== time helpers (minutes from 00:00, 深夜は +1440) =====
@@ -1393,7 +1394,7 @@ function pullEvents(){
       pullEvents._busy=false;
       if(!r || !r.ok) return;
       var changed=false;
-      (r.events||[]).forEach(function(ev){ if(applyEvent(ev)) changed=true; });
+      (r.events||[]).forEach(function(ev){ if(applyEvent(ev)) changed=true; addFeed(ev); });
       S.sync.last=r.last||S.sync.last;
       S.sync.lastOk=Date.now();
       save();
@@ -1558,9 +1559,31 @@ function importReport(){
   document.getElementById('rxIn').value = '';
   save(); render(); toast(n + '件を取り込みました');
 }
+function addFeed(ev){
+  if(!S.feed) S.feed=[];
+  if(ev.seq!==undefined && S.feed.some(function(x){return x.seq===ev.seq;})) return;
+  S.feed.push({seq:ev.seq, kind:ev.kind, dev:ev.dev||'', note:ev.note||'', ts:String(ev.ts||'')});
+  if(S.feed.length>60) S.feed=S.feed.slice(-60);
+}
+function feedColor(k){
+  return k==='call'?'var(--bad)':k==='log'?'var(--warn)':k==='reset'?'var(--bad)':
+         k==='role'?'var(--live)':'var(--acc)';
+}
+function feedLabel(k){
+  return {stamp:'打刻', log:'トラブル', call:'呼び出し', role:'担当', reset:'リセット'}[k]||k;
+}
 function renderReports(){
   var el = document.getElementById('rxList');
-  if(!S.reports.length){ el.innerHTML='<div class="pad note">まだ報告はありません</div>'; return; }
+  var fd = (S.feed||[]).filter(function(x){return x.note;});
+  if(fd.length){
+    el.innerHTML = fd.slice().reverse().slice(0,20).map(function(x){
+      var t=(x.ts||'').match(/\d{1,2}:\d{2}/);
+      return '<div class="logitem"><div class="mt">'+(t?esc(t[0]):'')+'　'+esc(x.dev)+'</div>'+
+        '<b style="color:'+feedColor(x.kind)+'">['+feedLabel(x.kind)+']</b> '+esc(x.note)+'</div>';
+    }).join('');
+    return;
+  }
+  if(!S.reports.length){ el.innerHTML='<div class="pad note">まだ動きはありません</div>'; return; }
   el.innerHTML = S.reports.slice(-8).reverse().map(function(r){
     if(r.kind==='T'){
       var col = r.sev===1?'var(--bad)':r.sev===2?'var(--warn)':'var(--acc)';
@@ -1647,7 +1670,7 @@ function resetStamps(){
 function resetAll(){
   if(!confirm('打刻とトラブルログを全部消します。\n\n共有がオンなら【全員の端末】からも消えます。\n共有設定・タイムテーブルは残ります。\n\nよろしいですか？')) return;
   pushEvent('reset',{scope:'all'}, '記録を全消去（全端末）');
-  S.logs = []; S.reports = []; S.lastRx = null; S.roleDev = '';
+  S.logs = []; S.reports = []; S.feed = []; S.lastRx = null; S.roleDev = '';
   S.stages.forEach(function(st){ st.acts.forEach(function(a){ a.aStart=null; a.aEnd=null; }); });
   save(); render(); toast('消去しました');
 }
