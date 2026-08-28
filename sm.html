@@ -152,6 +152,7 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
     <div class="badge wr hide" id="finBadge"></div>
     <div style="flex:1"></div>
     <span class="sub" id="syncTag" style="font-size:12px">同期オフ</span>
+    <span class="sub" style="font-size:11px;opacity:.6">v6</span>
     <button class="iconbtn gh" id="themeBtn" onclick="toggleTheme()" title="昼夜切替">☀</button>
     <button class="iconbtn gh" onclick="view('setup')">設定</button>
   </div>
@@ -345,7 +346,7 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
         <button class="gh" onclick="resetAll()">記録を全消去</button>
         <input type="file" id="imp" class="hide" accept=".json" onchange="importJSON(this)">
       </div>
-      <div class="pad note">データはこの端末のブラウザに自動保存されます。オフラインでも動作します。当日は機内モードでも使えます。</div>
+      <div class="pad note"><b style="font-size:15px;color:var(--live)">バージョン <span id="verTag">v6</span></b><br>全員が同じバージョンか確認してください。違っていたら、そのページを再読み込みしてください。<br><br>データはこの端末のブラウザに自動保存されます。オフラインでも動作します。当日は機内モードでも使えます。</div>
     </div>
   </div>
 </main>
@@ -768,6 +769,7 @@ var MANUAL = [
 var S = {stages:[], logs:[], cur:0, mode:'lead', reports:[], lastRx:null, startDate:'2026-09-19',
   sync:{url:'',key:'',dev:'',last:0,outbox:[],on:true,lastOk:null}, roleDev:'',
   cfg:{change:15, warn:15, esc:30, silence:30}};
+var APP_VERSION = 'v6';
 var KEY = 'sm-dash-v4';
 
 function save(){ try{localStorage.setItem(KEY, JSON.stringify(S));}catch(e){} }
