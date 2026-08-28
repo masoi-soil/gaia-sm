@@ -67,6 +67,7 @@ button.g{background:var(--acc);border-color:var(--acc);color:#fff}
 body:not(.day) button.g{color:#062611}
 button.sm{padding:8px 12px;font-size:14px;min-height:38px}
 button.gh{background:transparent;color:var(--tx2)}
+button.locked{opacity:.38;filter:grayscale(.7)}
 .bigtimer{text-align:center;padding:18px 12px}
 .bigtimer .v{font-size:60px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-1px}
 .bigtimer .l{color:var(--tx2);font-size:14px;margin-bottom:5px}
@@ -177,10 +178,11 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
         <div class="l" id="timerSub">待機中</div>
         <div class="v" id="timerVal">--:--</div>
         <div class="row" style="margin-top:14px;max-width:420px;margin-left:auto;margin-right:auto">
-          <button class="g" onclick="stampStart()">▶ 本番開始を打刻</button>
-          <button class="p" onclick="stampEnd()">■ 終了を打刻</button>
+          <button class="g" id="btnStart" onclick="stampStart()">▶ 本番開始を打刻</button>
+          <button class="p" id="btnEnd" onclick="stampEnd()">■ 終了を打刻</button>
         </div>
         <button class="g hide" id="smCopyBtn" onclick="copyReport()" style="width:100%;max-width:420px;margin:10px auto 0;display:block">報告文をコピー → LINEに貼る</button>
+        <div class="sub" id="roleTag" style="margin-top:10px;font-weight:700"></div>
         <div class="note" id="stampNote" style="margin-top:8px">打刻すると以降の予測時刻と押しが自動で再計算されます</div>
       </div>
     </div>
@@ -288,6 +290,13 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
         <div class="row" style="margin-top:8px">
           <button id="syToggle" onclick="toggleSync()">同期オン</button>
           <button onclick="syncNow()">今すぐ同期</button>
+        </div>
+        <button class="g" onclick="makeSetupLink()" style="width:100%;margin-top:8px">配布用リンクを作る（SMに送る）</button>
+        <div class="note" id="roleNow" style="margin-top:12px;font-weight:700">現在の打刻担当：未設定</div>
+        <button class="p" onclick="takeRole()" style="width:100%;margin-top:6px">打刻担当を自分にする</button>
+        <div class="note" style="margin-top:8px">
+          <b>打刻できるのは担当の1台だけです。</b>他の端末は閲覧のみになります。<br>
+          シフト交代のときは、次の人がこのボタンを押して引き継いでください。
         </div>
         <div id="syResult" class="note" style="margin-top:8px"></div>
         <div class="note" style="margin-top:10px">
@@ -757,7 +766,7 @@ var MANUAL = [
 
 // ===== state =====
 var S = {stages:[], logs:[], cur:0, mode:'lead', reports:[], lastRx:null, startDate:'2026-09-19',
-  sync:{url:'',key:'',dev:'',last:0,outbox:[],on:true,lastOk:null},
+  sync:{url:'',key:'',dev:'',last:0,outbox:[],on:true,lastOk:null}, roleDev:'',
   cfg:{change:15, warn:15, esc:30, silence:30}};
 var KEY = 'sm-dash-v4';
 
@@ -775,6 +784,7 @@ function load(){
   if(!S.theme) S.theme = 'night';
   if(!S.sync) S.sync = {url:'',key:'',dev:'',last:0,outbox:[],on:true,lastOk:null};
   if(!S.sync.outbox) S.sync.outbox = [];
+  if(S.roleDev===undefined) S.roleDev='';
 }
 
 // ===== time helpers (minutes from 00:00, 深夜は +1440) =====
@@ -954,6 +964,7 @@ function actState(st, a, i){
 // ===== stamping =====
 function stampStart(){
   var st = curStage(); if(!st){ toast('タイムテーブル未設定'); return; }
+  if(!isStamper() && !askTakeRole()) return;
   var i = activeIdx(st); if(i<0){ toast('全アクト終了済み'); return; }
   var a = st.acts[i];
   if(a.aStart !== null){ toast('すでに開始打刻済み'); return; }
@@ -966,6 +977,7 @@ function stampStart(){
 }
 function stampEnd(){
   var st = curStage(); if(!st){ toast('タイムテーブル未設定'); return; }
+  if(!isStamper() && !askTakeRole()) return;
   var i = activeIdx(st); if(i<0){ toast('全アクト終了済み'); return; }
   var a = st.acts[i];
   if(a.aStart === null){ toast('先に開始を打刻してください'); return; }
@@ -1032,6 +1044,7 @@ function render(){
   var ag = document.getElementById('allGrid'); ag.innerHTML='';
   S.stages.forEach(function(x,i){ ag.appendChild(stageCard(x,i,false)); });
 
+  renderRole();
   renderPresets();
   renderLogs();
   renderReports();
@@ -1245,6 +1258,73 @@ function exportCSV(){
 }
 
 
+
+
+// ===== 打刻担当 =====
+// 担当が決まっていない間は誰でも打刻できる（開始時にロックしないため）
+function isStamper(){
+  if(!S.sync || !S.sync.dev) return true;      // 端末名 未設定なら制限しない
+  if(!S.roleDev) return true;                  // まだ誰も担当していない
+  return S.roleDev === S.sync.dev;
+}
+function takeRole(){
+  if(!S.sync || !S.sync.dev){ toast('先に設定で端末名を入れてください'); return false; }
+  S.roleDev = S.sync.dev;
+  pushEvent('role', {dev:S.sync.dev});
+  save(); render();
+  toast('打刻担当になりました');
+  return true;
+}
+// 担当でない端末が打刻しようとした時
+function askTakeRole(){
+  if(!S.sync || !S.sync.dev){ toast('先に設定で端末名を入れてください'); return false; }
+  var ok=false;
+  try{
+    ok = confirm('いまの打刻担当は「'+S.roleDev+'」です。\n\n'+
+      '自分（'+S.sync.dev+'）が担当を引き継いで打刻しますか？\n'+
+      '引き継ぐと、前の担当は打刻できなくなります。');
+  }catch(e){ ok=false; }
+  if(!ok) return false;
+  return takeRole();
+}
+function renderRole(){
+  var el=document.getElementById('roleTag');
+  if(el){
+    if(!S.sync || !S.sync.dev){ el.textContent=''; }
+    else if(!S.roleDev){ el.textContent='打刻担当：未設定（誰でも打刻できます）'; el.style.color='var(--tx2)'; }
+    else if(isStamper()){ el.textContent='打刻担当：あなた（'+S.roleDev+'）'; el.style.color='var(--acc)'; }
+    else { el.textContent='打刻担当：'+S.roleDev+'　※あなたは閲覧のみ'; el.style.color='var(--warn)'; }
+  }
+  var s=document.getElementById('btnStart'), e2=document.getElementById('btnEnd');
+  var off=!isStamper();
+  if(s) s.classList.toggle('locked', off);
+  if(e2) e2.classList.toggle('locked', off);
+  var r=document.getElementById('roleNow');
+  if(r) r.textContent = S.roleDev ? ('現在の打刻担当：'+S.roleDev) : '現在の打刻担当：未設定';
+}
+
+// ===== 設定リンク（1タップで共有設定を入れる） =====
+function b64enc(s){
+  return btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function b64dec(s){
+  s=s.replace(/-/g,'+').replace(/_/g,'/');
+  while(s.length%4) s+='=';
+  return decodeURIComponent(escape(atob(s)));
+}
+function readSetupLink(){
+  var m=(location.hash||'').match(/[#&]s=([^&]+)/);
+  if(!m) return false;
+  try{
+    var o=JSON.parse(b64dec(m[1]));
+    if(!o.u||!o.k) return false;
+    SETUP_APPLIED = o;
+    try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){ location.hash=''; }
+    return true;
+  }catch(e){ return false; }
+}
+var SETUP_APPLIED = null;
+
 // ===== 共有同期（GAS＋スプレッドシート） =====
 function syncOn(){ return !!(S.sync && S.sync.on && S.sync.url && S.sync.key); }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -1328,6 +1408,11 @@ function applyEvent(ev){
     S.logs.sort(function(x,y){return (x.at||0)-(y.at||0);});
     return true;
   }
+  if(ev.kind==='role'){
+    if(!d.dev || S.roleDev===d.dev) return false;
+    S.roleDev=d.dev;
+    return true;
+  }
   if(ev.kind==='call'){
     if(S.reports.some(function(r){return r.seq===ev.seq;})) return false;
     S.reports.push({kind:'T', seq:ev.seq, time:(ev.ts||'').slice(11,16), stage:'ブース',
@@ -1375,6 +1460,14 @@ function testSync(){
     .catch(function(){ el.textContent='✗ つながりません。URLと電波を確認してください'; });
 }
 function syncNow(){ flushOutbox(); pullEvents(); toast('同期しています'); }
+function makeSetupLink(){
+  saveSync();
+  var el=document.getElementById('syResult');
+  if(!S.sync.url||!S.sync.key){ el.textContent='先に共有URLと合言葉を入れてください'; return; }
+  var link=location.origin+location.pathname+'#s='+b64enc(JSON.stringify({u:S.sync.url,k:S.sync.key}));
+  copy(link);
+  el.textContent='配布用リンクをコピーしました。SMグループLINEに貼ってください（このリンクは外に出さないこと）';
+}
 
 // ===== モード / 報告 =====
 function setMode(m){
@@ -1602,6 +1695,10 @@ document.getElementById('cfgWarn').value = S.cfg.warn;
 document.getElementById('cfgEsc').value = S.cfg.esc;
 document.getElementById('cfgSilence').value = S.cfg.silence;
 document.getElementById('cfgStart').value = S.startDate;
+readSetupLink();
+if(SETUP_APPLIED){
+  S.sync.url=SETUP_APPLIED.u; S.sync.key=SETUP_APPLIED.k; S.sync.on=true; save();
+}
 applyTheme();
 applyMode();
 document.getElementById('syUrl').value = S.sync.url||'';
@@ -1610,6 +1707,18 @@ document.getElementById('syDev').value = S.sync.dev||'';
 document.getElementById('syToggle').textContent = S.sync.on?'同期オン':'同期オフ';
 syncBadge();
 setInterval(function(){ flushOutbox(); pullEvents(); }, 20000);
+if(SETUP_APPLIED){
+  setTimeout(function(){
+    if(!S.sync.dev){
+      var n=null;
+      try{ n=prompt('共有設定を読み込みました。\nあなたの名前を入れてください（記録に残ります）',''); }catch(e){}
+      S.sync.dev=(n||'').trim(); save();
+      document.getElementById('syDev').value=S.sync.dev;
+    }
+    syncBadge(); pullEvents();
+    toast('共有設定が入りました');
+  }, 900);
+}
 setTimeout(function(){ if(syncOn()) pullEvents(); }, 1200);
 document.addEventListener('visibilitychange', function(){
   if(document.visibilityState==='visible' && syncOn()){ flushOutbox(); pullEvents(); }
