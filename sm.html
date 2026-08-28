@@ -167,9 +167,13 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
     <div class="card hide" id="reportCard" style="margin-bottom:12px">
       <h2><span>現場からの報告</span><span class="sub" id="silenceTag">—</span></h2>
       <div id="rxList"></div>
-      <div class="pad" style="border-top:1px solid var(--line)">
-        <textarea id="rxIn" style="min-height:64px" placeholder="LINEに来た報告をここに貼り付け"></textarea>
-        <button class="p" onclick="importReport()" style="width:100%;margin-top:8px">取り込む</button>
+      <div class="pad" id="rxAuto" style="border-top:1px solid var(--line)">
+        <div class="note">共有がオンなので、打刻・トラブル・演者呼び出しは<b>自動でここに入ります。</b>貼り付けは要りません。</div>
+      </div>
+      <div class="pad hide" id="rxManual" style="border-top:1px solid var(--line)">
+        <div class="note" style="margin-bottom:8px">共有がオフです。LINEで届いた報告文を貼れば、ここに反映できます。</div>
+        <textarea id="rxIn" style="min-height:64px" placeholder="LINEで届いた報告文を貼り付け"></textarea>
+        <button class="p" onclick="importReport()" style="width:100%;margin-top:8px">貼り付けた報告を取り込む</button>
       </div>
     </div>
 
@@ -1054,6 +1058,7 @@ function render(){
   renderPresets();
   renderLogs();
   renderReports();
+  renderRx();
   tick();
 }
 
@@ -1568,6 +1573,12 @@ function renderReports(){
       (r.now?' — 進行中 '+esc(r.now):'')+
       (r.next?'<div class="mt">次: '+esc(r.next)+' '+esc(r.nextT)+'</div>':'')+'</div>';
   }).join('');
+}
+function renderRx(){
+  var on=syncOn();
+  var a=document.getElementById('rxAuto'), m=document.getElementById('rxManual');
+  if(a) a.classList.toggle('hide', !on);
+  if(m) m.classList.toggle('hide', on);
 }
 function renderSilence(){
   var el = document.getElementById('silenceTag'); if(!el) return;
