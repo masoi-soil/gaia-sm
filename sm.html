@@ -342,7 +342,7 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
         <button onclick="exportJSON()">バックアップ書き出し</button>
         <button onclick="document.getElementById('imp').click()">読み込み</button>
         <button class="gh" onclick="resetStamps()">打刻だけリセット</button>
-        <button class="gh" onclick="resetAll()">全消去</button>
+        <button class="gh" onclick="resetAll()">記録を全消去</button>
         <input type="file" id="imp" class="hide" accept=".json" onchange="importJSON(this)">
       </div>
       <div class="pad note">データはこの端末のブラウザに自動保存されます。オフラインでも動作します。当日は機内モードでも使えます。</div>
@@ -1408,6 +1408,15 @@ function applyEvent(ev){
     S.logs.sort(function(x,y){return (x.at||0)-(y.at||0);});
     return true;
   }
+  if(ev.kind==='reset'){
+    var sc=(d && d.scope)||'stamps';
+    var ch=false;
+    st.acts.forEach(function(a){
+      if(a.aStart!==null || a.aEnd!==null){ a.aStart=null; a.aEnd=null; ch=true; }
+    });
+    if(sc==='all' && S.logs.length){ S.logs=[]; ch=true; }
+    return ch;
+  }
   if(ev.kind==='role'){
     if(!d.dev || S.roleDev===d.dev) return false;
     S.roleDev=d.dev;
@@ -1610,13 +1619,16 @@ function importJSON(el){
   r.readAsText(f);
 }
 function resetStamps(){
-  if(!confirm('全ての打刻を消します。タイムテーブルとログは残ります。')) return;
+  if(!confirm('全ての打刻を消します。\n\n共有がオンなら【全員の端末】から消えます。\nタイムテーブルとログは残ります。')) return;
   S.stages.forEach(function(st){st.acts.forEach(function(a){a.aStart=null;a.aEnd=null;});});
+  pushEvent('reset',{scope:'stamps'});
   save(); render(); toast('打刻をリセットしました');
 }
 function resetAll(){
-  if(!confirm('全データを消去します。よろしいですか？')) return;
-  S = {stages:[],logs:[],cur:0,cfg:{change:15,warn:5,esc:15}};
+  if(!confirm('打刻とトラブルログを全部消します。\n\n共有がオンなら【全員の端末】からも消えます。\n共有設定・タイムテーブルは残ります。\n\nよろしいですか？')) return;
+  pushEvent('reset',{scope:'all'});
+  S.logs = []; S.reports = []; S.lastRx = null; S.roleDev = '';
+  S.stages.forEach(function(st){ st.acts.forEach(function(a){ a.aStart=null; a.aEnd=null; }); });
   save(); render(); toast('消去しました');
 }
 function dl(content, name, type){
