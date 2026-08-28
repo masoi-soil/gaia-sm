@@ -971,8 +971,10 @@ function stampStart(){
   var a = st.acts[i];
   if(a.aStart !== null){ toast('すでに開始打刻済み'); return; }
   a.aStart = nowMin();
-  pushEvent('stamp',{i:i,f:'aStart',v:a.aStart,name:a.name});
-  var d = a.aStart - a.start;
+  var dd = a.aStart - a.start;
+  pushEvent('stamp',{i:i,f:'aStart',v:a.aStart,name:a.name},
+    a.name+' 開始 '+fmtD(a.aStart)+'（'+(dd===0?'定刻':sgn(dd)+'分')+'）');
+  var d = dd;
   save(); render();
   if(S.mode==='sm'){ copy(makeReport()); toast('開始打刻＋報告文コピー済。LINEに貼って'); }
   else toast('開始 ' + fmt(a.aStart) + '（' + (d===0?'定刻':sgn(d)+'分') + '）');
@@ -984,7 +986,9 @@ function stampEnd(){
   var a = st.acts[i];
   if(a.aStart === null){ toast('先に開始を打刻してください'); return; }
   a.aEnd = nowMin();
-  pushEvent('stamp',{i:i,f:'aEnd',v:a.aEnd,name:a.name});
+  var de = a.aEnd - a.end;
+  pushEvent('stamp',{i:i,f:'aEnd',v:a.aEnd,name:a.name},
+    a.name+' 終了 '+fmtD(a.aEnd)+'（'+(de===0?'定刻':sgn(de)+'分')+'）');
   save(); render();
   if(S.mode==='sm'){ copy(makeReport()); toast('終了打刻＋報告文コピー済。LINEに貼って'); }
   else toast('終了 ' + fmt(a.aEnd) + ' / 転換開始');
@@ -992,8 +996,8 @@ function stampEnd(){
 function undo(si, ai, which){
   var a = S.stages[si].acts[ai];
   if(which==='end') a.aEnd = null; else { a.aEnd=null; a.aStart=null; }
-  pushEvent('stamp',{i:ai,f:'aEnd',v:null,name:a.name});
-  if(which!=='end') pushEvent('stamp',{i:ai,f:'aStart',v:null,name:a.name});
+  pushEvent('stamp',{i:ai,f:'aEnd',v:null,name:a.name}, a.name+' 終了の打刻を取消');
+  if(which!=='end') pushEvent('stamp',{i:ai,f:'aStart',v:null,name:a.name}, a.name+' 開始の打刻を取消');
   save(); render();
 }
 
@@ -1219,7 +1223,10 @@ function saveCard(){
     prev: free ? '' : p.p
   };
   S.logs.push(entry);
-  pushEvent('log', entry);
+  pushEvent('log', entry,
+    'トラブル：'+entry.unit+' / '+entry.event+
+    (entry.impact?'　押し+'+entry.impact+'分':'')+
+    (entry.memo?'　'+entry.memo:''));
   save(); closeCard(); renderLogs(); renderPresets();
   if(S.mode==='sm'){ copy(makeTroubleReport(S.logs[S.logs.length-1])); toast('記録＋報告文コピー済。LINEに貼って'); }
   else toast('記録しました');
@@ -1272,7 +1279,7 @@ function isStamper(){
 function takeRole(){
   if(!S.sync || !S.sync.dev){ toast('先に設定で端末名を入れてください'); return false; }
   S.roleDev = S.sync.dev;
-  pushEvent('role', {dev:S.sync.dev});
+  pushEvent('role', {dev:S.sync.dev}, '打刻担当を「'+S.sync.dev+'」に交代');
   save(); render();
   toast('打刻担当になりました');
   return true;
@@ -1352,8 +1359,8 @@ function gas(params){
   });
 }
 
-function pushEvent(kind, data){
-  var item={kind:kind, data:JSON.stringify(data), t:Date.now()};
+function pushEvent(kind, data, note){
+  var item={kind:kind, data:JSON.stringify(data), note:note||'', t:Date.now()};
   if(!syncOn()) return;
   S.sync.outbox.push(item); save();
   flushOutbox();
@@ -1363,7 +1370,7 @@ function flushOutbox(){
   if(!syncOn() || !S.sync.outbox.length || flushOutbox._busy) return;
   flushOutbox._busy=true;
   var item=S.sync.outbox[0];
-  gas({key:S.sync.key, op:'push', kind:item.kind, dev:S.sync.dev||'SM', data:item.data})
+  gas({key:S.sync.key, op:'push', kind:item.kind, dev:S.sync.dev||'SM', data:item.data, note:item.note||''})
     .then(function(){
       S.sync.outbox.shift(); save(); flushOutbox._busy=false;
       if(S.sync.outbox.length) flushOutbox();
@@ -1623,12 +1630,12 @@ function importJSON(el){
 function resetStamps(){
   if(!confirm('全ての打刻を消します。\n\n共有がオンなら【全員の端末】から消えます。\nタイムテーブルとログは残ります。')) return;
   S.stages.forEach(function(st){st.acts.forEach(function(a){a.aStart=null;a.aEnd=null;});});
-  pushEvent('reset',{scope:'stamps'});
+  pushEvent('reset',{scope:'stamps'}, '打刻をリセット（全端末）');
   save(); render(); toast('打刻をリセットしました');
 }
 function resetAll(){
   if(!confirm('打刻とトラブルログを全部消します。\n\n共有がオンなら【全員の端末】からも消えます。\n共有設定・タイムテーブルは残ります。\n\nよろしいですか？')) return;
-  pushEvent('reset',{scope:'all'});
+  pushEvent('reset',{scope:'all'}, '記録を全消去（全端末）');
   S.logs = []; S.reports = []; S.lastRx = null; S.roleDev = '';
   S.stages.forEach(function(st){ st.acts.forEach(function(a){ a.aStart=null; a.aEnd=null; }); });
   save(); render(); toast('消去しました');
