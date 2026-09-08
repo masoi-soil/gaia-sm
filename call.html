@@ -181,9 +181,16 @@ function two(n){return (n<10?'0':'')+n;}
 function hhmm(){var d=new Date();return two(d.getHours())+':'+two(d.getMinutes());}
 
 // ---- 呼び出し開始 ----
-function fire(kind){
-  if(cur) return;
-  cur=kind; t0=Date.now();
+function fire(kind, resume, isTest){
+  if(cur){
+    // ドリンク呼び出し中に「音のトラブル」が押されたら、上書きして格上げ（逆は無視）
+    if(!(cur==='drink' && kind==='sound')) return;
+    if(C.logs.length && C.logs[C.logs.length-1].wait==null) C.logs[C.logs.length-1].wait=Math.floor((Date.now()-t0)/1000);
+    clearInterval(tick); stopBeep(); stopVib();
+    cur=null;
+  }
+  cur=kind; t0=resume ? resume : Date.now();
+  C.active = isTest ? null : {kind:kind, t0:t0}; save();
   var t=TYPE[kind];
   var a=document.getElementById('alert');
   a.style.background=t.col;
@@ -199,6 +206,7 @@ function fire(kind){
   // 中継が未設定の端末でだけ、LINEアプリを開く手動送信を出す
   document.getElementById('btnLineApp').classList.toggle('hide', !!C.gas);
   startTick(); startBeep(); startVib();
+  if(resume){ setSend('', '（再表示）画面が再読み込みされました'); renderLog(); return; }
   C.logs.push({t:hhmm(), kind:kind, act:C.act||'', at:Date.now()});
   if(C.logs.length>60) C.logs=C.logs.slice(-60);
   save(); renderLog();
@@ -246,7 +254,7 @@ function pushLine(kind, tryNo){
     });
 }
 function retryPush(){ if(cur) pushLine(cur, 0); }
-function testFire(){ closeCfg(); setTimeout(function(){fire('drink');},250); }
+function testFire(){ closeCfg(); setTimeout(function(){fire('drink', 0, true);},250); }
 
 function startTick(){
   clearInterval(tick);
@@ -296,7 +304,7 @@ function clearCall(){
     var u = gasURL('done', '&wait=' + encodeURIComponent(Math.floor(s/60)+':'+two(s%60)));
     try{ fetch(u,{method:'GET'}).catch(function(){ fetch(u,{mode:'no-cors'}).catch(function(){}); }); }catch(e){}
   }
-  cur=null;
+  cur=null; C.active=null; save();
   clearInterval(tick); stopBeep(); stopVib();
   var a=document.getElementById('alert');
   a.classList.remove('on','flash');
@@ -311,7 +319,9 @@ function sendLineApp(){
           (C.act?('\n演者: '+C.act):'')+
           '\nブースまでお願いします';
   var url='https://line.me/R/msg/text/?'+encodeURIComponent(msg);
-  try{ window.open(url,'_blank'); }catch(e){ location.href=url; }
+  var w=null;
+  try{ w=window.open(url,'_blank'); }catch(e){ w=null; }
+  if(!w) location.href=url;   // ホーム画面追加（スタンドアロン）だと window.open が null を返す
 }
 
 // ---- 設定 ----
@@ -384,6 +394,11 @@ document.addEventListener('click', function once(){
 
 if(SETUP){ C.gas=SETUP.u; C.key=SETUP.k; save(); }
 renderNow(); renderLog();
+// 呼び出し中に画面が再読み込みされても（メモリ不足・誤操作）、点滅を復元する
+if(C.active && C.active.kind && TYPE[C.active.kind]){
+  if(Date.now()-(C.active.t0||0) > 3*3600*1000){ C.active=null; save(); }   // 3時間以上前のものは古い呼び出しとして捨てる
+  else setTimeout(function(){ fire(C.active.kind, C.active.t0||Date.now()); }, 300);
+}
 if(SETUP){ setTimeout(function(){ alert('共有設定を読み込みました。⚙ でステージ名と演者名を確認してください。'); }, 600); }
 </script>
 </body>

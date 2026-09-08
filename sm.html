@@ -152,7 +152,7 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
     <div class="badge wr hide" id="finBadge"></div>
     <div style="flex:1"></div>
     <span class="sub" id="syncTag" style="font-size:12px">同期オフ</span>
-    <span class="sub" style="font-size:11px;opacity:.6">v8</span>
+    <span class="sub" id="verHead" style="font-size:11px;opacity:.6">v9</span>
     <button class="iconbtn gh" id="themeBtn" onclick="toggleTheme()" title="昼夜切替">☀</button>
     <button class="iconbtn gh" onclick="view('setup')">設定</button>
   </div>
@@ -350,7 +350,7 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
         <button class="gh" onclick="resetAll()">記録を全消去</button>
         <input type="file" id="imp" class="hide" accept=".json" onchange="importJSON(this)">
       </div>
-      <div class="pad note"><b style="font-size:15px;color:var(--live)">バージョン <span id="verTag">v8</span></b><br>全員が同じバージョンか確認してください。違っていたら、そのページを再読み込みしてください。<br><br>データはこの端末のブラウザに自動保存されます。オフラインでも動作します。当日は機内モードでも使えます。</div>
+      <div class="pad note"><b style="font-size:15px;color:var(--live)">バージョン <span id="verTag">v9</span></b><br>全員が同じバージョンか確認してください。違っていたら、そのページを再読み込みしてください。<br><br>データはこの端末のブラウザに自動保存されます。オフラインでも動作します。当日は機内モードでも使えます。</div>
     </div>
   </div>
 </main>
@@ -773,7 +773,7 @@ var MANUAL = [
 var S = {stages:[], logs:[], cur:0, mode:'lead', reports:[], lastRx:null, startDate:'2026-09-19',
   sync:{url:'',key:'',dev:'',last:0,outbox:[],on:true,lastOk:null}, roleDev:'', feed:[],
   cfg:{change:15, warn:15, esc:30, silence:30}};
-var APP_VERSION = 'v8';
+var APP_VERSION = 'v9';
 var KEY = 'sm-dash-v4';
 
 function save(){ try{localStorage.setItem(KEY, JSON.stringify(S));}catch(e){} }
@@ -792,6 +792,8 @@ function load(){
   if(!S.sync.outbox) S.sync.outbox = [];
   if(S.roleDev===undefined) S.roleDev='';
   if(!S.feed) S.feed=[];
+  if(!S.deletedLogs) S.deletedLogs=[];
+  if(S.sync.lastErr===undefined) S.sync.lastErr='';
 }
 
 // ===== time helpers (minutes from 00:00, 深夜は +1440) =====
@@ -831,8 +833,7 @@ function fmtD(mins){
 function sgn(n){ return (n>0?'+':'') + n; }
 
 // ===== parse timetable =====
-function loadTT(src){
-  var txt = (typeof src === 'string') ? src : document.getElementById('ttInput').value;
+function parseTT(txt){
   var stages = [], cur = null;
   txt.split(/\n/).forEach(function(raw){
     var line = raw.trim();
@@ -845,7 +846,7 @@ function loadTT(src){
     if(!m) return;
     cur.acts.push({start:parseT(m[1]), end:m[2]?parseT(m[2]):null, name:m[3].trim(), aStart:null, aEnd:null, anchor:anchor});
   });
-  if(!stages.length){ toast('読み取れませんでした。形式を確認してください'); return; }
+  if(!stages.length) return null;
   // 深夜跨ぎ正規化 + 終了時刻の補完
   stages.forEach(function(st){
     var off = 0, prev = -1;
@@ -859,6 +860,12 @@ function loadTT(src){
       if(a.end === null) a.end = (i+1 < st.acts.length) ? st.acts[i+1].start : a.start + 60;
     });
   });
+  return stages;
+}
+function loadTT(src){
+  var txt = (typeof src === 'string') ? src : document.getElementById('ttInput').value;
+  var stages = parseTT(txt);
+  if(!stages){ toast('読み取れませんでした。形式を確認してください'); return; }
   S.stages = stages; S.cur = 0;
   save(); render(); view('run');
   toast(stages.reduce(function(s,x){return s+x.acts.length;},0) + 'アクト 読み込み完了');
@@ -928,12 +935,22 @@ function reloadReal(){
 }
 
 // ===== delay engine =====
-// idx 番目のアクトが背負う押し。サイレントタイム(anchor)を通過すると 0 にリセットされる。
+// idx 番目のアクトが背負う押し。
+// MUSIC STOP(anchor) は「枠の長さ分だけ押しを吸収する」。
+//   ・入ってくる押しが枠の長さ以内 → 以降 0 にリセット
+//   ・枠の長さを超える押し → 超えた分だけ次に持ち越す（60分の枠で+70なら +10）
+//   ・anchor の終了が打刻されていれば、その実績（実終了−予定終了）をそのまま使う
+function anchorCarry(a, dIn){
+  if(a.aEnd !== null) return a.aEnd - a.end;                 // 実績優先
+  var len = a.end - a.start;
+  var dStart = (a.aStart !== null) ? (a.aStart - a.start) : dIn;
+  return Math.max(0, dStart - len);
+}
 function delayAt(st, idx){
   var d = 0;
   for(var i=0;i<idx && i<st.acts.length;i++){
     var a = st.acts[i];
-    if(a.anchor){ d = 0; continue; }          // サイレントタイムで吸収
+    if(a.anchor){ d = anchorCarry(a, d); continue; }   // サイレントタイムで吸収
     if(a.aEnd !== null) d = a.aEnd - a.end;
     else if(a.aStart !== null) d = a.aStart - a.start;
   }
@@ -948,7 +965,10 @@ function curDelay(st){
 function predict(st, ai){
   var a = st.acts[ai];
   var d = delayAt(st, ai);
-  return {s: (a.aStart!==null? a.aStart : a.start + d), e: (a.aEnd!==null? a.aEnd : a.end + d), shifted: (a.aStart===null && d!==0), d:d};
+  var s = (a.aStart!==null? a.aStart : a.start + d);
+  // anchor の終了予定は「押しを吸収した後」の時刻（枠内なら予定どおり 16:00）
+  var e = (a.aEnd!==null? a.aEnd : (a.anchor ? a.end + anchorCarry(a, d) : a.end + d));
+  return {s:s, e:e, shifted: (a.aStart===null && d!==0), d:d};
 }
 function curStage(){ return S.stages[S.cur]; }
 // 現在対象アクト: 未終了の最初のアクト
@@ -998,12 +1018,38 @@ function stampEnd(){
   if(S.mode==='sm'){ copy(makeReport()); toast('終了打刻＋報告文コピー済。LINEに貼って'); }
   else toast('終了 ' + fmt(a.aEnd) + ' / 転換開始');
 }
+// 直近に打刻したアクト（取消できるのはここだけ。古い枠を戻すと以降の押しが全部狂うため）
+function lastStampedIdx(st){
+  for(var i=st.acts.length-1;i>=0;i--){ if(st.acts[i].aStart!==null) return i; }
+  return -1;
+}
 function undo(si, ai, which){
-  var a = S.stages[si].acts[ai];
+  var st = S.stages[si]; if(!st) return;
+  if(!isStamper() && !askTakeRole()) return;
+  if(ai !== lastStampedIdx(st)){ toast('取消できるのは直近の打刻だけです'); return; }
+  var a = st.acts[ai];
+  var ok=false;
+  try{ ok = confirm(a.name+' の'+(which==='end'?'終了':'開始')+'打刻を取り消します。\n全端末に反映されます。よろしいですか？'); }catch(e){ ok=false; }
+  if(!ok) return;
   if(which==='end') a.aEnd = null; else { a.aEnd=null; a.aStart=null; }
   pushEvent('stamp',{i:ai,f:'aEnd',v:null,name:a.name}, a.name+' 終了の打刻を取消');
   if(which!=='end') pushEvent('stamp',{i:ai,f:'aStart',v:null,name:a.name}, a.name+' 開始の打刻を取消');
   save(); render();
+}
+// 打刻し忘れの救済：予定どおり（＝いまの押しをそのまま背負った時刻）で埋めて次に進む
+function fillAsScheduled(si, ai){
+  var st = S.stages[si]; if(!st) return;
+  if(!isStamper() && !askTakeRole()) return;
+  if(ai !== activeIdx(st)){ toast('埋められるのは「次」の枠だけです'); return; }
+  var a = st.acts[ai], p = predict(st, ai);
+  var ok=false;
+  try{ ok = confirm(a.name+' を「予定どおり」として記録します。\n開始 '+fmtD(p.s)+' / 終了 '+fmtD(p.e)+'\n（押し '+(p.d===0?'0':sgn(p.d))+'分のまま次の枠へ進みます）\n\nよろしいですか？'); }catch(e){ ok=false; }
+  if(!ok) return;
+  a.aStart = p.s; a.aEnd = p.e;
+  pushEvent('stamp',{i:ai,f:'aStart',v:a.aStart,name:a.name}, a.name+' 開始（打刻忘れ→予定どおりで補完）');
+  pushEvent('stamp',{i:ai,f:'aEnd',v:a.aEnd,name:a.name}, a.name+' 終了（打刻忘れ→予定どおりで補完）');
+  save(); render();
+  toast(a.name+' を予定どおりで埋めました');
 }
 
 // ===== render =====
@@ -1034,7 +1080,9 @@ function render(){
       fin.classList.remove('hide');
       fin.className = 'badge ' + (Math.abs(d)<S.cfg.esc?'wr':'bd');
       if(an >= 0){
-        fin.textContent = 'MUSIC STOP 開始 ' + fmtD(predict(st,an).s) + '（予定 ' + fmtD(st.acts[an].start) + '）→ 以降リセット';
+        var carry = anchorCarry(st.acts[an], delayAt(st,an));
+        fin.textContent = 'MUSIC STOP 開始 ' + fmtD(predict(st,an).s) + '（予定 ' + fmtD(st.acts[an].start) + '）→ ' +
+          (carry>0 ? '枠で吸収しきれず 以降 '+sgn(carry)+'分 持ち越し' : '以降リセット');
       } else {
         fin.textContent = '最終アクト終了 ' + fmtD(predict(st,li).e) + '（予定 ' + fmtD(last.end) + '）';
       }
@@ -1084,10 +1132,17 @@ function stageCard(st, si, full){
       '<div class="nm">'+esc(a.name)+'<small>'+(stt==='live'?'● 進行中 ':stt==='next'?'▷ 次 ':stt==='done'?'✓ 終了 ':'')+esc(actual)+diff+'</small>'+tag+'</div>'+
       '<div class="btns"></div>';
     var btns = row.querySelector('.btns');
-    if(a.aStart!==null){
+    if(a.aStart!==null && ai===lastStampedIdx(st)){
       var u = document.createElement('button'); u.className='sm gh'; u.textContent='取消';
       u.onclick = function(){ undo(si,ai, a.aEnd!==null?'end':'start'); };
       btns.appendChild(u);
+    }
+    // 「次」の枠なのに予定終了をとっくに過ぎている＝打刻し忘れ。予定どおりで埋めて先に進める
+    if(stt==='next' && !a.anchor && nowMin() > p.e + 5){
+      var f = document.createElement('button'); f.className='sm gh'; f.textContent='予定どおりで埋める';
+      f.title='打刻し忘れた枠を、いまの押しのまま予定時刻で記録して次へ進む';
+      f.onclick = function(){ fillAsScheduled(si,ai); };
+      btns.appendChild(f);
     }
     c.appendChild(row);
   });
@@ -1110,7 +1165,14 @@ function renderLogs(){
       (l.prev?'<div class="mt">再発防止: '+esc(l.prev)+'</div>':'')+'</div>';
   }).join('');
 }
-function delLog(i){ S.logs.splice(i,1); save(); renderLogs(); renderPresets(); }
+function delLog(i){
+  var l = S.logs[i]; if(!l) return;
+  var ok=false;
+  try{ ok = confirm('この記録を削除します（全端末から消えます）。\n'+l.time+' '+(l.unit||'')+' / '+l.event); }catch(e){ ok=false; }
+  if(!ok) return;
+  S.logs.splice(i,1); save(); renderLogs(); renderPresets();
+  if(l.uid) pushEvent('logdel', {uid:l.uid}, 'トラブル記録を削除：'+l.event);
+}
 
 // ===== live timer =====
 function tick(){
@@ -1118,7 +1180,17 @@ function tick(){
   var d = new Date();
   renderSilence();
   if(tick._c===undefined) tick._c=0;
-  if((++tick._c % 15)===0) syncBadge();
+  if((++tick._c % 15)===0){
+    syncBadge();
+    // 「予定どおりで埋める」の出る/出ないが変わったら一覧を描き直す（打刻忘れに気づけるように）
+    var st0 = curStage();
+    if(st0){
+      var i0 = activeIdx(st0), elig = false;
+      if(i0>=0 && st0.acts[i0].aStart===null && !st0.acts[i0].anchor) elig = (nowMin() > predict(st0,i0).e + 5);
+      if(tick._fill!==undefined && tick._fill!==elig && document.getElementById('modal').classList.contains('hide')) render();
+      tick._fill = elig;
+    }
+  }
   document.getElementById('clock').textContent =
     String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
   var st = curStage();
@@ -1350,7 +1422,7 @@ function gas(params){
     var q=Object.keys(params).map(function(k){return k+'='+encodeURIComponent(params[k]);}).join('&');
     var base=S.sync.url + (S.sync.url.indexOf('?')<0?'?':'&');
     fetch(base+q,{method:'GET'})
-      .then(function(r){return r.text();})
+      .then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.text(); })
       .then(function(t){ resolve(t); })
       .catch(function(){
         var cb='__cb'+uid();
@@ -1367,9 +1439,22 @@ function gas(params){
 
 function pushEvent(kind, data, note){
   var item={kind:kind, data:JSON.stringify(data), note:note||'', t:Date.now()};
-  if(!syncOn()) return;
+  // 共有先が設定済みなら、同期オフ・圏外でも必ず貯める（オンになった時にまとめて送る）
+  if(!(S.sync && S.sync.url && S.sync.key)) return;
   S.sync.outbox.push(item); save();
   flushOutbox();
+}
+
+// GASの応答が「受け付けた」と読めるかを判定。
+// HTML（権限エラー・デプロイ切れのページ）や空応答は失敗扱いにして送信済みにしない。
+// 'ok' = 受理 / 'rejected' = GASが明示的に拒否（合言葉違い・未知の種別など。再送しても無駄）/ 'broken' = HTML・空応答（デプロイ切れ・権限。あとで再送）
+function gasVerdict(t){
+  if(t && typeof t==='object') return ('ok' in t && !t.ok) ? 'rejected' : 'ok';   // JSONP経由
+  var s = String(t==null?'':t).trim();
+  if(!s) return 'broken';
+  if(s.charAt(0)==='<') return 'broken';
+  try{ var r=JSON.parse(s); if(r && typeof r==='object' && 'ok' in r) return r.ok ? 'ok' : 'rejected'; }catch(e){}
+  return 'ok';   // "ok"/"sent" などのプレーン応答は成功とみなす
 }
 
 function flushOutbox(){
@@ -1377,7 +1462,18 @@ function flushOutbox(){
   flushOutbox._busy=true;
   var item=S.sync.outbox[0];
   gas({key:S.sync.key, op:'push', kind:item.kind, dev:S.sync.dev||'SM', data:item.data, note:item.note||''})
-    .then(function(){
+    .then(function(t){
+      var v = gasVerdict(t);
+      if(v==='broken'){ flushOutbox._busy=false; S.sync.lastErr=String(t).slice(0,80); save(); syncBadge(); return; }
+      if(v==='rejected'){
+        // 明示的に拒否された1件だけ捨てて、後ろを詰まらせない（記録は端末側に残る）
+        S.sync.lastErr='拒否: '+String(typeof t==='object'?JSON.stringify(t):t).slice(0,80);
+        addFeed({seq:'rej'+item.t, kind:'reject', dev:S.sync.dev||'', note:'【送信できず・共有されていません】'+(item.note||item.kind), ts:new Date().toISOString()});
+        S.sync.outbox.shift(); save(); flushOutbox._busy=false; renderReports();
+        if(S.sync.outbox.length) flushOutbox();
+        syncBadge(); return;
+      }
+      S.sync.lastErr='';
       S.sync.outbox.shift(); save(); flushOutbox._busy=false;
       if(S.sync.outbox.length) flushOutbox();
       syncBadge();
@@ -1418,10 +1514,19 @@ function applyEvent(ev){
   if(ev.kind==='log'){
     if(!d.uid) return false;
     if(S.logs.some(function(l){return l.uid===d.uid;})) return false;
+    if((S.deletedLogs||[]).indexOf(d.uid)>=0) return false;   // 削除済みは復活させない
     d.dev=ev.dev||'';
     S.logs.push(d);
     S.logs.sort(function(x,y){return (x.at||0)-(y.at||0);});
     return true;
+  }
+  if(ev.kind==='logdel'){
+    if(!d.uid) return false;
+    if(!S.deletedLogs) S.deletedLogs=[];
+    if(S.deletedLogs.indexOf(d.uid)<0) S.deletedLogs.push(d.uid);
+    var before=S.logs.length;
+    S.logs=S.logs.filter(function(l){return l.uid!==d.uid;});
+    return S.logs.length!==before;
   }
   if(ev.kind==='reset'){
     var sc=(d && d.scope)||'stamps';
@@ -1429,7 +1534,7 @@ function applyEvent(ev){
     st.acts.forEach(function(a){
       if(a.aStart!==null || a.aEnd!==null){ a.aStart=null; a.aEnd=null; ch=true; }
     });
-    if(sc==='all' && S.logs.length){ S.logs=[]; ch=true; }
+    if(sc==='all'){ if(S.logs.length){ S.logs=[]; ch=true; } S.deletedLogs=[]; }
     return ch;
   }
   if(ev.kind==='role'){
@@ -1452,6 +1557,7 @@ function syncBadge(){
   var el=document.getElementById('syncTag'); if(!el) return;
   if(!syncOn()){ el.textContent='同期オフ'; el.style.color='var(--tx2)'; return; }
   var q=S.sync.outbox.length;
+  if(S.sync.lastErr){ el.textContent='送信エラー'+(q?' / 未送信'+q:'')+'（設定→接続テスト）'; el.style.color='var(--bad)'; return; }
   if(!S.sync.lastOk){ el.textContent='同期待ち'+(q?'（未送信'+q+'）':''); el.style.color='var(--warn)'; return; }
   var m=Math.floor((Date.now()-S.sync.lastOk)/60000);
   el.textContent='同期 '+(m<1?'たった今':m+'分前')+(q?' / 未送信'+q:'');
@@ -1566,11 +1672,11 @@ function addFeed(ev){
   if(S.feed.length>60) S.feed=S.feed.slice(-60);
 }
 function feedColor(k){
-  return k==='call'?'var(--bad)':k==='log'?'var(--warn)':k==='reset'?'var(--bad)':
+  return k==='call'?'var(--bad)':k==='log'?'var(--warn)':k==='reset'?'var(--bad)':k==='reject'?'var(--bad)':
          k==='role'?'var(--live)':'var(--acc)';
 }
 function feedLabel(k){
-  return {stamp:'打刻', log:'トラブル', call:'呼び出し', role:'担当', reset:'リセット'}[k]||k;
+  return {stamp:'打刻', log:'トラブル', logdel:'記録削除', call:'呼び出し', role:'担当', reset:'リセット', reject:'送信拒否'}[k]||k;
 }
 function renderReports(){
   var el = document.getElementById('rxList');
@@ -1625,7 +1731,11 @@ function shareLine(){
     lines.push(s);
     if(d!==0){
       var an = nextAnchor(st), li = st.acts.length-1;
-      if(an>=0) lines.push('  ' + st.acts[an].name + ' 開始見込 ' + fmt(predict(st,an).s) + '（予定 ' + fmt(st.acts[an].start) + '）以降リセット');
+      if(an>=0){
+        var cr = anchorCarry(st.acts[an], delayAt(st,an));
+        lines.push('  ' + st.acts[an].name + ' 開始見込 ' + fmt(predict(st,an).s) + '（予定 ' + fmt(st.acts[an].start) + '）' +
+          (cr>0 ? '以降 '+sgn(cr)+'分 持ち越し' : '以降リセット'));
+      }
       else if(st.acts[li]) lines.push('  最終終了見込 ' + fmt(predict(st,li).e) + '（予定 ' + fmt(st.acts[li].end) + '）');
     }
   });
@@ -1670,7 +1780,7 @@ function resetStamps(){
 function resetAll(){
   if(!confirm('打刻とトラブルログを全部消します。\n\n共有がオンなら【全員の端末】からも消えます。\n共有設定・タイムテーブルは残ります。\n\nよろしいですか？')) return;
   pushEvent('reset',{scope:'all'}, '記録を全消去（全端末）');
-  S.logs = []; S.reports = []; S.feed = []; S.lastRx = null; S.roleDev = '';
+  S.logs = []; S.reports = []; S.feed = []; S.deletedLogs = []; S.lastRx = null; S.roleDev = '';
   S.stages.forEach(function(st){ st.acts.forEach(function(a){ a.aStart=null; a.aEnd=null; }); });
   save(); render(); toast('消去しました');
 }
@@ -1745,6 +1855,7 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){retu
 
 // init
 load();
+(function(){ ['verTag','verHead'].forEach(function(id){ var v=document.getElementById(id); if(v) v.textContent=APP_VERSION; }); })();
 document.getElementById('cfgChange').value = S.cfg.change;
 document.getElementById('cfgWarn').value = S.cfg.warn;
 document.getElementById('cfgEsc').value = S.cfg.esc;
@@ -1775,16 +1886,42 @@ if(SETUP_APPLIED){
   }, 900);
 }
 setTimeout(function(){ if(syncOn()) pullEvents(); }, 1200);
+// 端末の時刻が日本時間でないと打刻が全部ズレる（海外SIM・海外設定の端末対策）
+if(new Date().getTimezoneOffset() !== -540){
+  setTimeout(function(){
+    var last = 0; try{ last = parseInt(localStorage.getItem('sm-tzwarn')||'0',10)||0; }catch(e){}
+    if(Date.now()-last > 6*3600*1000){
+      try{ localStorage.setItem('sm-tzwarn', String(Date.now())); }catch(e){}
+      try{ alert('この端末の時刻設定が日本時間（JST）ではありません。\n打刻の時刻がズレます。設定 → 一般 → 日付と時刻 を日本にしてください。'); }catch(e){}
+    } else toast('端末の時刻が日本時間ではありません');
+  }, 1500);
+}
 document.addEventListener('visibilitychange', function(){
   if(document.visibilityState==='visible' && syncOn()){ flushOutbox(); pullEvents(); }
 });
-// 初回起動時は本番タイムテーブルを自動で読み込む
+// 初回起動時は本番タイムテーブルを自動で読み込む。
+// 打刻もログもまだ無い端末で、保存済みタイテが本番タイテ（REAL_TT）と違えば黙って入れ直す
+// （版が上がって名前や時刻を直した時に、古いタイテのまま同期がズレるのを防ぐ）
+function ttSignature(stages){
+  return (stages||[]).map(function(st){ return st.name+'|'+st.acts.map(function(a){return a.start+'-'+a.end+':'+a.name+(a.anchor?'!':'');}).join(','); }).join('||');
+}
+function ttUntouched(){
+  if(S.logs && S.logs.length) return false;
+  return !(S.stages||[]).some(function(st){ return st.acts.some(function(a){ return a.aStart!==null || a.aEnd!==null; }); });
+}
 if(!S.stages.length){
   document.getElementById('ttInput').value = REAL_TT;
   loadTT(REAL_TT);
 } else {
-  render();
-  view('run');
+  var needRefresh = false;
+  try{ needRefresh = ttUntouched() && ttSignature(parseTT(REAL_TT)) !== ttSignature(S.stages); }catch(e){ needRefresh = false; }
+  if(needRefresh){
+    document.getElementById('ttInput').value = REAL_TT;
+    loadTT(REAL_TT);
+  } else {
+    render();
+    view('run');
+  }
 }
 </script>
 </body>
