@@ -84,7 +84,7 @@ textarea{min-height:150px;font-variant-numeric:tabular-nums;line-height:1.6}
 .note{color:var(--tx2);font-size:12px;line-height:1.6}
 .fab{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;gap:6px;
   padding:8px 10px calc(8px + var(--sab));background:var(--hdr);backdrop-filter:blur(10px);border-top:1px solid var(--line)}
-.fab button{flex:1;padding:12px 4px;font-size:15px;min-height:50px}
+.fab button{flex:1;padding:12px 4px;font-size:16px;min-height:54px}
 .toast{position:fixed;bottom:calc(86px + var(--sab));left:50%;transform:translateX(-50%);max-width:92%;text-align:center;
   background:var(--acc);color:#fff;padding:13px 20px;border-radius:14px;font-weight:800;font-size:15px;z-index:100;opacity:0;transition:opacity .2s;pointer-events:none}
 body:not(.day) .toast{color:#062611}
@@ -152,7 +152,7 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
     <div class="badge wr hide" id="finBadge"></div>
     <div style="flex:1"></div>
     <span class="sub" id="syncTag" style="font-size:12px">同期オフ</span>
-    <span class="sub" id="verHead" style="font-size:11px;opacity:.6">v9</span>
+    <span class="sub" id="verHead" style="font-size:11px;opacity:.6">v10</span>
     <button class="iconbtn gh" id="themeBtn" onclick="toggleTheme()" title="昼夜切替">☀</button>
     <button class="iconbtn gh" onclick="view('setup')">設定</button>
   </div>
@@ -163,32 +163,45 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
 <main>
   <!-- 進行ビュー -->
   <div id="v-run">
-    <!-- 統括モード: 現場からの報告 -->
-    <div class="card hide" id="reportCard" style="margin-bottom:12px">
+    <!-- 本番前の練習モード告知（本番前のみ表示・常に最上部） -->
+    <div class="card hide" id="preCard" style="margin-bottom:12px;border-color:var(--warn)">
+      <div class="pad">
+        <div style="font-weight:800;color:var(--warn)">🧪 本番前（9/19 14:00 開始）。いまは練習用です。</div>
+        <div class="note" style="margin-top:6px">自由に押して試してOK。押しの数字は本番まで出ません。本番前に統括が記録を全部消します。</div>
+      </div>
+    </div>
+
+    <!-- 最近の動き（全員に表示） -->
+    <div class="card" id="reportCard" style="margin-bottom:12px">
       <h2><span>最近の動き</span><span class="sub" id="silenceTag">—</span></h2>
       <div id="rxList"></div>
       <div class="pad" id="rxAuto" style="border-top:1px solid var(--line)">
         <div class="note">誰が打刻・記録したか、演者から呼び出しがあったかが<b>ここに流れます。</b></div>
       </div>
-      <div class="pad hide" id="rxManual" style="border-top:1px solid var(--line)">
-        <div class="note" style="margin-bottom:8px">共有がオフです。LINEで届いた報告文を貼れば、ここに反映できます。</div>
-        <textarea id="rxIn" style="min-height:64px" placeholder="LINEで届いた報告文を貼り付け"></textarea>
-        <button class="p" onclick="importReport()" style="width:100%;margin-top:8px">貼り付けた報告を取り込む</button>
+    </div>
+
+    <!-- 打刻忘れバナー -->
+    <div class="card hide" id="forgotCard" style="margin-bottom:12px;border-color:var(--warn)">
+      <div class="pad">
+        <div style="font-weight:800;color:var(--warn)" id="forgotTitle">⚠ 開始、押し忘れていませんか？</div>
+        <div class="note" style="margin-top:6px" id="forgotNote">予定終了を過ぎています。実際は終わっているなら下のボタンで「予定どおり」として記録して次へ進めます。</div>
+        <button class="g" id="forgotBtn" style="width:100%;margin-top:10px">予定どおりで埋めて次へ</button>
       </div>
     </div>
 
+    <!-- いまカード -->
     <div class="card" id="timerCard" style="margin-bottom:12px">
       <h2><span id="timerLabel">転換タイマー</span><span class="sub" id="timerTarget"></span></h2>
       <div class="bigtimer">
         <div class="l" id="timerSub">待機中</div>
         <div class="v" id="timerVal">--:--</div>
-        <div class="row" style="margin-top:14px;max-width:420px;margin-left:auto;margin-right:auto">
-          <button class="g" id="btnStart" onclick="stampStart()">▶ 本番開始を打刻</button>
-          <button class="p" id="btnEnd" onclick="stampEnd()">■ 終了を打刻</button>
+        <div style="margin-top:14px;max-width:420px;margin-left:auto;margin-right:auto">
+          <button class="g" id="btnStart" onclick="stampStart()" style="width:100%;min-height:64px;font-size:20px">▶ 始まった</button>
+          <button class="p" id="btnEnd" onclick="stampEnd()" style="width:100%;min-height:64px;font-size:20px">■ 終わった</button>
+          <button class="gh sm hide" id="undoLast" onclick="undoLastClick()" style="width:100%;margin-top:8px">さっきの記録を取り消す</button>
         </div>
-        <button class="g hide" id="smCopyBtn" onclick="copyReport()" style="width:100%;max-width:420px;margin:10px auto 0;display:block">報告文をコピー → LINEに貼る</button>
         <div class="sub" id="roleTag" style="margin-top:10px;font-weight:700"></div>
-        <div class="note" id="stampNote" style="margin-top:8px">打刻すると以降の予測時刻と押しが自動で再計算されます</div>
+        <div class="note" id="stampNote" style="margin-top:8px">音が出た瞬間に押してください（打刻）</div>
       </div>
     </div>
     <div class="grid multi" id="stageGrid"></div>
@@ -202,8 +215,12 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
   <!-- ログビュー -->
   <div id="v-log" class="hide">
     <div class="card" style="margin-bottom:12px">
-      <h2>起きたことをタップ<span class="sub">対処手順が出て、同時に記録されます</span></h2>
+      <h2>何が起きた？<span class="sub">タップ → 手順が出る → 記録する</span></h2>
+      <div class="steplabel" style="padding:12px 12px 0">よくある6つ</div>
+      <div class="pgrid" id="commonGrid"></div>
+      <div class="steplabel" style="padding:12px 12px 0">機材別にさがす</div>
       <div class="tabs" id="catTabs" style="padding:10px 12px 0"></div>
+      <div class="note" style="padding:6px 12px 0">● <span style="color:var(--bad)">赤</span>＝音が止まる　<span style="color:var(--warn)">黄</span>＝音は出ている　<span style="color:var(--acc)">緑</span>＝予兆・記録だけ</div>
       <div id="presetGrid" class="pgrid"></div>
       <div class="pad" style="border-top:1px solid var(--line)">
         <button class="gh sm" onclick="openCard(null)" style="width:100%">＋ 一覧にない事象を自由入力で記録</button>
@@ -246,121 +263,167 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
 
   <!-- 設定ビュー -->
   <div id="v-setup" class="hide">
+    <!-- A. あなた -->
     <div class="card" style="margin-bottom:12px;border-color:var(--acc)">
-      <h2 style="color:var(--acc)">本番タイムテーブル</h2>
+      <h2 style="color:var(--acc)">あなた</h2>
       <div class="pad">
-        <div class="note" style="margin-bottom:10px">起動時に自動で読み込まれます。表示がおかしい時や、打刻をやり直したい時だけ下を押してください。</div>
-        <button class="g" onclick="reloadReal()" style="width:100%">本番タイテを入れ直す（打刻・ログは消えます）</button>
+        <label class="note">あなたの名前（無線の呼び名と同じに）</label>
+        <input id="syDev" placeholder="例: 統括 / SM田中" style="margin-bottom:8px">
+        <button class="g" onclick="saveSync()" style="width:100%">保存</button>
+        <div class="note" id="roleNow" style="margin-top:14px;font-weight:700">現在の記録担当：未設定</div>
+        <button class="p" onclick="takeRole()" style="width:100%;margin-top:6px">記録担当を自分にする</button>
+        <div class="note" style="margin-top:8px">記録できるのは担当の1台だけ。シフト交代のときは次の人がこのボタンを押す。</div>
       </div>
     </div>
-    <div class="card" style="margin-bottom:12px">
-      <h2>タイムテーブルを編集・差し替え</h2>
+
+    <!-- B. 困ったとき -->
+    <div class="card" style="margin-bottom:12px;border-color:var(--live)">
+      <h2 style="color:var(--live)">困ったとき</h2>
       <div class="pad">
-        <div class="note" style="margin-bottom:8px">
-          <b>形式</b>（1行1アクト。区分名〈DAY1など〉は <code>#</code> で始める）<br>
-          <code>#DAY1 9/19</code><br>
-          <code>20:00-21:00 ARTIST A</code><br>
-          <code>22:00 ARTIST B</code> ← 終了時刻を省くと次アクトの開始時刻を自動採用<br>
-          <code>!13:00-15:00 サイレントタイム</code> ← 行頭 <code>!</code> で<b>押しリセット枠</b>。この枠を過ぎると押しが0に戻る<br>
-          深夜跨ぎ（<code>26:00</code> でも <code>02:00</code> でも可）に対応。
+        <div class="row">
+          <button class="p" onclick="syncNow()">今すぐ同期</button>
+          <button onclick="testSync()">接続テスト</button>
         </div>
-        <textarea id="ttInput" placeholder="#DAY1 9/19
+        <div id="syResult" class="note" style="margin-top:8px"></div>
+        <div class="note" style="margin-top:8px">電波が切れても記録はできます。つながった時にまとめて送ります。</div>
+        <div class="row" style="margin-top:12px">
+          <button class="gh" onclick="location.reload()">画面を再読み込み</button>
+          <button class="gh" onclick="toggleTheme()">昼夜モード切替</button>
+        </div>
+        <div class="pad note" style="padding:14px 0 0"><b style="font-size:15px;color:var(--live)">バージョン <span id="verTag">v10</span></b><br>全員が同じ版数か確認してください。違っていたら、そのページを再読み込みしてください。</div>
+      </div>
+    </div>
+
+    <!-- C. 統括のみ（折りたたみ） -->
+    <div class="card" style="margin-bottom:12px;border-color:var(--bad)" id="leadCard">
+      <h2 style="cursor:pointer" onclick="toggleLead()"><span>🔒 統括のみ（SMは開かない）</span><span class="sub" id="leadToggleIcon">＋</span></h2>
+      <div id="leadBody" class="hide">
+        <div class="pad">
+          <div class="note rd">ここを触ると全員の画面が変わります。統括以外は閉じてください。</div>
+        </div>
+
+        <div class="card" style="margin:0 12px 12px;border-color:var(--acc)">
+          <h2 style="color:var(--acc)">本番タイムテーブル</h2>
+          <div class="pad">
+            <div class="note" style="margin-bottom:10px">起動時に自動で読み込まれます。表示がおかしい時や、打刻をやり直したい時だけ下を押してください。</div>
+            <button class="g" onclick="reloadReal()" style="width:100%">本番タイテを入れ直す（打刻・ログは消えます）</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin:0 12px 12px">
+          <h2>タイムテーブルを編集・差し替え</h2>
+          <div class="pad">
+            <div class="note" style="margin-bottom:8px">
+              <b>形式</b>（1行1アクト。区分名〈DAY1など〉は <code>#</code> で始める）<br>
+              <code>#DAY1 9/19</code><br>
+              <code>20:00-21:00 ARTIST A</code><br>
+              <code>22:00 ARTIST B</code> ← 終了時刻を省くと次アクトの開始時刻を自動採用<br>
+              <code>!13:00-15:00 サイレントタイム</code> ← 行頭 <code>!</code> で<b>押しリセット枠</b>。この枠を過ぎると押しが0に戻る<br>
+              深夜跨ぎ（<code>26:00</code> でも <code>02:00</code> でも可）に対応。
+            </div>
+            <textarea id="ttInput" placeholder="#DAY1 9/19
 20:00-21:00 ARTIST A
 22:00-23:30 ARTIST B
 !13:00-15:00 サイレントタイム"></textarea>
-        <div class="row" style="margin-top:10px">
-          <button class="g" onclick="loadTT()">読み込む</button>
-          <button class="p" onclick="loadDemo()">本番のタイテを入れる</button>
+            <div class="row" style="margin-top:10px">
+              <button class="g" onclick="loadTT()">読み込む</button>
+              <button class="p" onclick="loadDemo()">本番のタイテを入れる</button>
+            </div>
+            <div class="note" style="margin-top:8px">◆＝ライブアクト（転換が必要）　★＝次もライブ（連続転換の要注意箇所）</div>
+          </div>
         </div>
-        <div class="note" style="margin-top:8px">◆＝ライブアクト（転換が必要）　★＝次もライブ（連続転換の要注意箇所）</div>
+
+        <div class="card" style="margin:0 12px 12px;border-color:var(--live)">
+          <h2 style="color:var(--live)">みんなで共有する（打刻・ログ）</h2>
+          <div class="pad">
+            <div class="note" style="margin-bottom:10px">
+              ここを設定すると、<b>誰が打刻・記録しても全員の画面に反映されます。</b><br>
+              統括は自分の端末を見ているだけで、全体の進行が分かります。
+            </div>
+            <label class="note">共有URL（GASのウェブアプリURL。呼び出しボタンと同じもの）</label>
+            <input id="syUrl" placeholder="https://script.google.com/macros/s/..../exec" style="margin-bottom:8px">
+            <label class="note">合言葉</label>
+            <input id="syKey" placeholder="合言葉を入力" style="margin-bottom:10px">
+            <div class="row">
+              <button class="g" onclick="saveSync()">保存</button>
+              <button class="p" onclick="testSync()">接続テスト</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button id="syToggle" onclick="toggleSync()">同期オン</button>
+            </div>
+            <button class="g" onclick="makeSetupLink()" style="width:100%;margin-top:8px">配布用リンクを作る（SMに送る）</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin:0 12px 12px">
+          <h2>この端末の役割</h2>
+          <div class="pad">
+            <div class="row" style="margin-bottom:8px">
+              <button id="mdLead" onclick="setMode('lead')">統括モード</button>
+              <button id="mdSm" onclick="setMode('sm')">現場SMモード</button>
+            </div>
+            <div class="note">
+              <b>統括モード：</b>現場から届いた報告を貼り付けて取り込む。全体の押しを一箇所で把握する。<br>
+              <b>現場SMモード：</b>記録するたびに全員の画面に自動で届きます。<br><br>
+              <b>報告が◯分途絶えたら赤で警告します。</b>統括が動かない代わりに、沈黙を検知します。
+            </div>
+            <div class="row" style="margin-top:10px">
+              <div><div class="note">沈黙警告の閾値（分）</div><input id="cfgSilence" type="number" value="30"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin:0 12px 12px">
+          <h2>設定</h2>
+          <div class="pad">
+            <div class="row" style="margin-bottom:8px">
+              <div><div class="note">開催初日</div><input id="cfgStart" type="date" value="2026-09-19"></div>
+              <div><div class="note">目標転換時間（分）</div><input id="cfgChange" type="number" value="15"></div>
+              <div><div class="note">押し警告の閾値（分）</div><input id="cfgWarn" type="number" value="15"></div>
+              <div><div class="note">エスカレーション閾値（分）</div><input id="cfgEsc" type="number" value="30"></div>
+            </div>
+            <div class="note"><b>開催初日は必ず設定してください。</b>49時間連続の通し計算に使います。ここが違うと全ての時刻がずれます。<br><br>
+            押しが警告閾値（既定15分）を超えると黄色、エスカレーション閾値（既定30分）を超えると赤。<b>赤＝統括に上げる状態</b>。<br>
+            枠は1時間刻みで転換枠は別に取られていません。DJ→DJはシームレス、<b>ライブの前後だけ転換が必要</b>なので、目標転換時間はライブ転換の目標値として使います。</div>
+            <button class="p" onclick="saveCfg()" style="width:100%;margin-top:10px">保存</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin:0 12px 12px">
+          <h2>データ</h2>
+          <div class="pad row">
+            <button onclick="exportJSON()">バックアップ書き出し</button>
+            <button onclick="document.getElementById('imp').click()">読み込み</button>
+            <button class="gh" onclick="resetStamps()">打刻だけリセット</button>
+            <button class="gh" onclick="resetAll()">記録を全消去</button>
+            <input type="file" id="imp" class="hide" accept=".json" onchange="importJSON(this)">
+          </div>
+          <div class="pad note">データはこの端末のブラウザに自動保存されます。オフラインでも動作します。当日は機内モードでも使えます。</div>
+        </div>
+
+        <div class="card" style="margin:0 12px 12px">
+          <h2>現場からの報告を取り込む</h2>
+          <div class="pad hide" id="rxManual">
+            <div class="note" style="margin-bottom:8px">共有がオフです。LINEで届いた報告文を貼れば、ここに反映できます。</div>
+            <textarea id="rxIn" style="min-height:64px" placeholder="LINEで届いた報告文を貼り付け"></textarea>
+            <button class="p" onclick="importReport()" style="width:100%;margin-top:8px">貼り付けた報告を取り込む</button>
+          </div>
+          <div class="pad">
+            <button class="gh" onclick="shareLine()" style="width:100%">進行状況をテキストでコピー</button>
+            <button class="g hide" id="smCopyBtn" onclick="copyReport()" style="width:100%;margin-top:8px">報告文をコピー → LINEに貼る</button>
+            <button class="gh" onclick="copyReport()" style="width:100%;margin-top:8px">進行報告文をコピー（LINE手打ち用の保険）</button>
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="card" style="margin-bottom:12px;border-color:var(--live)">
-      <h2 style="color:var(--live)">みんなで共有する（打刻・ログ）</h2>
-      <div class="pad">
-        <div class="note" style="margin-bottom:10px">
-          ここを設定すると、<b>誰が打刻・記録しても全員の画面に反映されます。</b><br>
-          統括は自分の端末を見ているだけで、全体の進行が分かります。
-        </div>
-        <label class="note">共有URL（GASのウェブアプリURL。呼び出しボタンと同じもの）</label>
-        <input id="syUrl" placeholder="https://script.google.com/macros/s/..../exec" style="margin-bottom:8px">
-        <label class="note">合言葉</label>
-        <input id="syKey" placeholder="合言葉を入力" style="margin-bottom:8px">
-        <label class="note">端末名（誰の端末か。記録に残ります）</label>
-        <input id="syDev" placeholder="例: 統括 / SM田中" style="margin-bottom:10px">
-        <div class="row">
-          <button class="g" onclick="saveSync()">保存</button>
-          <button class="p" onclick="testSync()">接続テスト</button>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <button id="syToggle" onclick="toggleSync()">同期オン</button>
-          <button onclick="syncNow()">今すぐ同期</button>
-        </div>
-        <button class="g" onclick="makeSetupLink()" style="width:100%;margin-top:8px">配布用リンクを作る（SMに送る）</button>
-        <div class="note" id="roleNow" style="margin-top:12px;font-weight:700">現在の打刻担当：未設定</div>
-        <button class="p" onclick="takeRole()" style="width:100%;margin-top:6px">打刻担当を自分にする</button>
-        <div class="note" style="margin-top:8px">
-          <b>打刻できるのは担当の1台だけです。</b>他の端末は閲覧のみになります。<br>
-          シフト交代のときは、次の人がこのボタンを押して引き継いでください。
-        </div>
-        <div id="syResult" class="note" style="margin-top:8px"></div>
-        <div class="note" style="margin-top:10px">
-          <b>電波が切れても打刻はできます。</b>送れなかった分は端末に貯めて、つながった時にまとめて送ります。
-        </div>
-      </div>
-    </div>
-    <div class="card" style="margin-bottom:12px">
-      <h2>この端末の役割</h2>
-      <div class="pad">
-        <div class="row" style="margin-bottom:8px">
-          <button id="mdLead" onclick="setMode('lead')">統括モード</button>
-          <button id="mdSm" onclick="setMode('sm')">現場SMモード</button>
-        </div>
-        <div class="note">
-          <b>統括モード：</b>現場から届いた報告を貼り付けて取り込む。全体の押しを一箇所で把握する。<br>
-          <b>現場SMモード：</b>打刻・記録するたびに報告文が自動でクリップボードに入る。LINEに貼るだけ。<br><br>
-          <b>報告が◯分途絶えたら赤で警告します。</b>統括が動かない代わりに、沈黙を検知します。
-        </div>
-        <div class="row" style="margin-top:10px">
-          <div><div class="note">沈黙警告の閾値（分）</div><input id="cfgSilence" type="number" value="30"></div>
-        </div>
-      </div>
-    </div>
-    <div class="card" style="margin-bottom:12px">
-      <h2>設定</h2>
-      <div class="pad">
-        <div class="row" style="margin-bottom:8px">
-          <div><div class="note">開催初日</div><input id="cfgStart" type="date" value="2026-09-19"></div>
-          <div><div class="note">目標転換時間（分）</div><input id="cfgChange" type="number" value="15"></div>
-          <div><div class="note">押し警告の閾値（分）</div><input id="cfgWarn" type="number" value="15"></div>
-          <div><div class="note">エスカレーション閾値（分）</div><input id="cfgEsc" type="number" value="30"></div>
-        </div>
-        <div class="note"><b>開催初日は必ず設定してください。</b>49時間連続の通し計算に使います。ここが違うと全ての時刻がずれます。<br><br>
-        押しが警告閾値（既定15分）を超えると黄色、エスカレーション閾値（既定30分）を超えると赤。<b>赤＝統括に上げる状態</b>。<br>
-        枠は1時間刻みで転換枠は別に取られていません。DJ→DJはシームレス、<b>ライブの前後だけ転換が必要</b>なので、目標転換時間はライブ転換の目標値として使います。</div>
-        <button class="p" onclick="saveCfg()" style="width:100%;margin-top:10px">保存</button>
-      </div>
-    </div>
-    <div class="card">
-      <h2>データ</h2>
-      <div class="pad row">
-        <button onclick="exportJSON()">バックアップ書き出し</button>
-        <button onclick="document.getElementById('imp').click()">読み込み</button>
-        <button class="gh" onclick="resetStamps()">打刻だけリセット</button>
-        <button class="gh" onclick="resetAll()">記録を全消去</button>
-        <input type="file" id="imp" class="hide" accept=".json" onchange="importJSON(this)">
-      </div>
-      <div class="pad note"><b style="font-size:15px;color:var(--live)">バージョン <span id="verTag">v9</span></b><br>全員が同じバージョンか確認してください。違っていたら、そのページを再読み込みしてください。<br><br>データはこの端末のブラウザに自動保存されます。オフラインでも動作します。当日は機内モードでも使えます。</div>
     </div>
   </div>
 </main>
 
 <div class="fab">
   <button id="fb-run" class="p" onclick="view('run')">進行</button>
-  <button id="fb-all" onclick="view('all')">全体</button>
-  <button id="fb-log" onclick="view('log')">ログ</button>
+  <button id="fb-all" onclick="view('all')">タイテ</button>
+  <button id="fb-log" onclick="view('log')">トラブル</button>
   <button id="fb-man" onclick="view('man')">手引</button>
-  <button class="g" onclick="shareLine()">共有</button>
 </div>
 
 <!-- 対処カード -->
@@ -390,9 +453,32 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
       </div>
       <input id="mdMemo" placeholder="メモ（任意）" style="margin-bottom:10px">
       <div class="row">
-        <button class="g" onclick="saveCard()">記録する</button>
+        <button class="g" onclick="saveCard()">記録する（全員に共有）</button>
         <button class="gh" onclick="closeCard()">手順だけ見た（記録しない）</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- 初回起動シート -->
+<div class="modal hide" id="welcome">
+  <div class="sheet">
+    <div class="sheetHead">
+      <div>
+        <div class="mdName">はじめに（30秒）</div>
+      </div>
+    </div>
+    <div class="sheetBody">
+      <label class="note">あなたの名前</label>
+      <input id="wName" placeholder="無線で使う呼び名" style="margin-bottom:16px">
+      <div class="steplabel">覚えるのは3つ</div>
+      <ol class="steps">
+        <li>音が出たら<b>緑ボタン</b></li>
+        <li>音が止まったら<b>青ボタン</b></li>
+        <li>困ったら下の「トラブル」</li>
+      </ol>
+      <div class="note" style="margin:-6px 0 6px">本番前は自由に押して試してOK（本番前に記録は消します）</div>
+      <button class="g" id="wGo" onclick="welcomeGo()" style="width:100%;margin-top:6px;min-height:56px;font-size:18px">はじめる</button>
     </div>
   </div>
 </div>
@@ -572,10 +658,18 @@ var PRESETS = [
 
 // ===== マニュアル =====
 var MANUAL = [
-{t:'いちばん大事な原則', k:'原則 優先順位 判断',
- h:'<p class="big">安全 &gt; 進行 &gt; 音質 &gt; 予定</p>'+
-   '<p>この順序を絶対に崩さない。人の安全に関わることは、タイムテーブルを犠牲にしてでも安全側に倒す。</p>'+
-   '<p class="hl">安全に関わる「止める」判断は、その場のSMが即決してよい。<br>ただし「再開する」判断は必ず上に上げる。</p>'},
+{t:'この画面の使い方（1分で読める）', k:'使い方 操作 ボタン 初めて',
+ h:'<p class="big">覚えるのは3つだけ</p>'+
+   '<ol class="steps">'+
+   '<li><b>音が出た瞬間</b>に 緑のボタン「◯◯が始まった」を押す</li>'+
+   '<li><b>音が止まった瞬間</b>に 青のボタン「◯◯が終わった」を押す</li>'+
+   '<li>何か起きたら 下の「トラブル」→ 起きたことをタップ → 手順どおり動いて「記録する」</li></ol>'+
+   '<p class="hl">押した記録は全員の画面と統括に自動で届きます。<b>LINEで報告文を打つ必要はありません。</b></p>'+
+   '<p><b>押し間違えたら</b> ボタンの下の「さっきの記録を取り消す」。直近1件だけ戻せます。</p>'+
+   '<p><b>押し忘れたら</b> 黄色い「押し忘れていませんか？」が出ます。「予定どおりで埋めて次へ」で戻れます。</p>'+
+   '<p><b>ボタンが薄い（押せない）とき</b> 別の人が記録担当です。シフト交代で自分が担当になるときは、ボタン上の「交代するときはここをタップ」を押してください。</p>'+
+   '<p class="rd"><b>触らないでください：</b>設定の「統括のみ」の中（タイテ編集・記録の消去など）。</p>'+
+   '<p class="q">くわしい説明書（画面つき）→ <a href="guide.html" style="color:var(--live)">guide.html</a></p>'},
 
 {t:'統括に上げる5つ（これ以外は自分で決める）', k:'判断 権限 エスカレーション 押し 統括 報告 例外',
  h:'<p class="hl">この現場は<b>例外報告型</b>です。<br>統括の許可を待つ運用ではありません。<b>下の5つ以外は、SMがその場で決めて動いてください。</b></p>'+
@@ -589,6 +683,11 @@ var MANUAL = [
    '</ol>'+
    '<p class="gr"><b>逆に、これは全部その場で決めてよい：</b>転換の短縮・延長、30分以内の押しの処理、予備機への差し替え、音出しの停止、救護・救急要請、雷による退避。</p>'+
    '<p class="hl"><b>迷ったら止める。</b>安全に関わる「止める」判断で怒られることはありません。<br>ただし「再開する」判断だけは必ず統括に上げてください。</p>'},
+
+{t:'いちばん大事な原則', k:'原則 優先順位 判断',
+ h:'<p class="big">安全 &gt; 進行 &gt; 音質 &gt; 予定</p>'+
+   '<p>この順序を絶対に崩さない。人の安全に関わることは、タイムテーブルを犠牲にしてでも安全側に倒す。</p>'+
+   '<p class="hl">安全に関わる「止める」判断は、その場のSMが即決してよい。<br>ただし「再開する」判断は必ず上に上げる。</p>'},
 
 {t:'報告のしかた', k:'報告 定時 LINE 沈黙 異常なし',
  h:'<p class="hl">統括は現場を見に行きません。<b>報告が上がってこない＝順調</b>と判断します。<br>だから<b>沈黙が一番危険</b>です。</p>'+
@@ -773,7 +872,7 @@ var MANUAL = [
 var S = {stages:[], logs:[], cur:0, mode:'lead', reports:[], lastRx:null, startDate:'2026-09-19',
   sync:{url:'',key:'',dev:'',last:0,outbox:[],on:true,lastOk:null}, roleDev:'', feed:[],
   cfg:{change:15, warn:15, esc:30, silence:30}};
-var APP_VERSION = 'v9';
+var APP_VERSION = 'v12';
 var KEY = 'sm-dash-v4';
 
 function save(){ try{localStorage.setItem(KEY, JSON.stringify(S));}catch(e){} }
@@ -820,6 +919,16 @@ function nowMin(){
   }
   if(n < 360) n += 1440;   // 初日未設定時のフォールバック
   return n;
+}
+// 本番前日かどうか（今日のローカル日付 < S.startDate）。nowMin()と同じ日付計算。
+function preEvent(){
+  if(!S.startDate) return false;
+  var d = new Date();
+  var p = S.startDate.split('-');
+  var s = new Date(+p[0], (+p[1])-1, +p[2]);
+  var t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  var days = Math.round((t - s)/86400000);
+  return days < 0;
 }
 function fmtD(mins){
   if(mins===null||mins===undefined||isNaN(mins)) return '--:--';
@@ -1001,8 +1110,7 @@ function stampStart(){
     a.name+' 開始 '+fmtD(a.aStart)+'（'+(dd===0?'定刻':sgn(dd)+'分')+'）');
   var d = dd;
   save(); render();
-  if(S.mode==='sm'){ copy(makeReport()); toast('開始打刻＋報告文コピー済。LINEに貼って'); }
-  else toast('開始 ' + fmt(a.aStart) + '（' + (d===0?'定刻':sgn(d)+'分') + '）');
+  toast('記録しました：'+a.name+' 開始 '+fmt(a.aStart)+(preEvent()?'':'（'+(d===0?'定刻':sgn(d)+'分')+'）'));
 }
 function stampEnd(){
   var st = curStage(); if(!st){ toast('タイムテーブル未設定'); return; }
@@ -1015,8 +1123,7 @@ function stampEnd(){
   pushEvent('stamp',{i:i,f:'aEnd',v:a.aEnd,name:a.name},
     a.name+' 終了 '+fmtD(a.aEnd)+'（'+(de===0?'定刻':sgn(de)+'分')+'）');
   save(); render();
-  if(S.mode==='sm'){ copy(makeReport()); toast('終了打刻＋報告文コピー済。LINEに貼って'); }
-  else toast('終了 ' + fmt(a.aEnd) + ' / 転換開始');
+  toast('記録しました：'+a.name+' 終了 '+fmt(a.aEnd)+(preEvent()?'':'（'+(de===0?'定刻':sgn(de)+'分')+'）'));
 }
 // 直近に打刻したアクト（取消できるのはここだけ。古い枠を戻すと以降の押しが全部狂うため）
 function lastStampedIdx(st){
@@ -1035,6 +1142,13 @@ function undo(si, ai, which){
   pushEvent('stamp',{i:ai,f:'aEnd',v:null,name:a.name}, a.name+' 終了の打刻を取消');
   if(which!=='end') pushEvent('stamp',{i:ai,f:'aStart',v:null,name:a.name}, a.name+' 開始の打刻を取消');
   save(); render();
+}
+// いまカード直下の「さっきの記録を取り消す」
+function undoLastClick(){
+  var st = curStage(); if(!st) return;
+  var idx = lastStampedIdx(st); if(idx<0) return;
+  var a = st.acts[idx];
+  undo(S.cur, idx, a.aEnd!==null?'end':'start');
 }
 // 打刻し忘れの救済：予定どおり（＝いまの押しをそのまま背負った時刻）で埋めて次に進む
 function fillAsScheduled(si, ai){
@@ -1072,11 +1186,18 @@ function render(){
   var fin = document.getElementById('finBadge');
   if(st){
     var d = curDelay(st);
-    badge.textContent = st.name + ' 押し ' + (d===0?'0分':sgn(d)+'分');
-    badge.className = 'badge ' + (Math.abs(d) < S.cfg.warn ? 'ok' : (Math.abs(d) < S.cfg.esc ? 'wr' : 'bd'));
+    if(preEvent()){
+      badge.textContent = '🧪 本番前';
+      badge.className = 'badge wr';
+    } else {
+      badge.textContent = '押し ' + (d===0?'0分':sgn(d)+'分');
+      badge.className = 'badge ' + (Math.abs(d) < S.cfg.warn ? 'ok' : (Math.abs(d) < S.cfg.esc ? 'wr' : 'bd'));
+    }
     var li = st.acts.length-1, last = st.acts[li];
     var an = nextAnchor(st);
-    if(last && d!==0){
+    if(preEvent() || S.mode==='sm'){
+      fin.classList.add('hide');
+    } else if(last && d!==0){
       fin.classList.remove('hide');
       fin.className = 'badge ' + (Math.abs(d)<S.cfg.esc?'wr':'bd');
       if(an >= 0){
@@ -1094,16 +1215,19 @@ function render(){
   } else {
     badge.textContent='押し 0分'; badge.className='badge ok'; fin.classList.add('hide');
   }
+  updatePreCard();
 
-  // stage grid (進行)
+  // stage grid (進行) — 前2・いま・次5だけのコンパクト表示
   var g = document.getElementById('stageGrid'); g.innerHTML='';
-  if(st) g.appendChild(stageCard(st, S.cur, true));
+  if(st) g.appendChild(stageCard(st, S.cur, true, true));
 
-  // all grid
+  // all grid（全件）
   var ag = document.getElementById('allGrid'); ag.innerHTML='';
   S.stages.forEach(function(x,i){ ag.appendChild(stageCard(x,i,false)); });
 
   renderRole();
+  renderMainBtn();
+  updateForgotCard();
   renderPresets();
   renderLogs();
   renderReports();
@@ -1111,13 +1235,72 @@ function render(){
   tick();
 }
 
-function stageCard(st, si, full){
+// ===== いまカードのボタン（1つだけ表示） =====
+function renderMainBtn(){
+  var s = document.getElementById('btnStart'), e = document.getElementById('btnEnd'),
+      u = document.getElementById('undoLast'), note = document.getElementById('stampNote');
+  var st = curStage();
+  if(!st){ s.classList.add('hide'); e.classList.add('hide'); u.classList.add('hide'); return; }
+  var i = activeIdx(st);
+  if(i<0){
+    s.classList.add('hide'); e.classList.add('hide');
+  } else {
+    var a = st.acts[i];
+    if(a.aStart===null){
+      s.textContent = a.anchor ? '▶ MUSIC STOP に入った' : '▶ '+a.name+' が始まった';
+      s.classList.remove('hide'); e.classList.add('hide');
+      if(note) note.textContent = '音が出た瞬間に押してください（打刻）';
+    } else {
+      e.textContent = a.anchor ? '■ MUSIC STOP 終了（音出し再開）' : '■ '+a.name+' が終わった';
+      e.classList.remove('hide'); s.classList.add('hide');
+      if(note) note.textContent = '音が止まった瞬間に押してください（打刻）';
+    }
+  }
+  if(u) u.classList.toggle('hide', lastStampedIdx(st) < 0);
+}
+// ===== 本番前カード =====
+function updatePreCard(){
+  var card = document.getElementById('preCard');
+  if(card) card.classList.toggle('hide', !preEvent());
+}
+// ===== 打刻忘れバナー =====
+function updateForgotCard(){
+  var card = document.getElementById('forgotCard');
+  var st = curStage();
+  var show = false, i = -1, p = null;
+  if(st && !preEvent()){
+    i = activeIdx(st);
+    if(i>=0 && st.acts[i].aStart===null && !st.acts[i].anchor){
+      p = predict(st,i);
+      show = nowMin() > p.e + 5;
+    }
+  }
+  card.classList.toggle('hide', !show);
+  if(show){
+    var a = st.acts[i];
+    document.getElementById('forgotTitle').textContent = '⚠ '+a.name+' の開始、押し忘れていませんか？';
+    document.getElementById('forgotNote').textContent = '予定終了 '+fmt(p.e)+' を過ぎています。実際は終わっているなら下のボタンで「予定どおり」として記録して次へ進めます。';
+    document.getElementById('forgotBtn').onclick = function(){ fillAsScheduled(S.cur, i); };
+  }
+}
+
+function stageCard(st, si, full, compact){
   var d = curDelay(st);
   var c = document.createElement('div'); c.className='card';
   var h = document.createElement('h2');
   h.innerHTML = '<span>'+esc(st.name)+'</span><span class="sub">押し '+(d===0?'0':sgn(d))+'分</span>';
   c.appendChild(h);
-  st.acts.forEach(function(a,ai){
+  var idxs = [];
+  if(compact){
+    var ai0 = activeIdx(st), startI, endI;
+    if(ai0 < 0){ startI = Math.max(0, st.acts.length-8); endI = st.acts.length; }
+    else { startI = Math.max(0, ai0-2); endI = Math.min(st.acts.length, ai0+6); }
+    for(var k=startI;k<endI;k++) idxs.push(k);
+  } else {
+    for(var k2=0;k2<st.acts.length;k2++) idxs.push(k2);
+  }
+  idxs.forEach(function(ai){
+    var a = st.acts[ai];
     var stt = actState(st,a,ai);
     var p = predict(st,ai);
     var row = document.createElement('div');
@@ -1132,13 +1315,13 @@ function stageCard(st, si, full){
       '<div class="nm">'+esc(a.name)+'<small>'+(stt==='live'?'● 進行中 ':stt==='next'?'▷ 次 ':stt==='done'?'✓ 終了 ':'')+esc(actual)+diff+'</small>'+tag+'</div>'+
       '<div class="btns"></div>';
     var btns = row.querySelector('.btns');
-    if(a.aStart!==null && ai===lastStampedIdx(st)){
+    if(!compact && a.aStart!==null && ai===lastStampedIdx(st)){
       var u = document.createElement('button'); u.className='sm gh'; u.textContent='取消';
       u.onclick = function(){ undo(si,ai, a.aEnd!==null?'end':'start'); };
       btns.appendChild(u);
     }
     // 「次」の枠なのに予定終了をとっくに過ぎている＝打刻し忘れ。予定どおりで埋めて先に進める
-    if(stt==='next' && !a.anchor && nowMin() > p.e + 5){
+    if(stt==='next' && !a.anchor && !preEvent() && nowMin() > p.e + 5){
       var f = document.createElement('button'); f.className='sm gh'; f.textContent='予定どおりで埋める';
       f.title='打刻し忘れた枠を、いまの押しのまま予定時刻で記録して次へ進む';
       f.onclick = function(){ fillAsScheduled(si,ai); };
@@ -1147,6 +1330,14 @@ function stageCard(st, si, full){
     c.appendChild(row);
   });
   if(!st.acts.length) c.innerHTML += '<div class="pad note">アクトがありません</div>';
+  if(compact && st.acts.length){
+    var padEl = document.createElement('div'); padEl.className='pad';
+    var allBtn = document.createElement('button'); allBtn.className='gh'; allBtn.style.width='100%';
+    allBtn.textContent = 'タイムテーブルを全部見る（'+st.acts.length+'枠）';
+    allBtn.onclick = function(){ view('all'); };
+    padEl.appendChild(allBtn);
+    c.appendChild(padEl);
+  }
   return c;
 }
 
@@ -1182,6 +1373,9 @@ function tick(){
   if(tick._c===undefined) tick._c=0;
   if((++tick._c % 15)===0){
     syncBadge();
+    renderMainBtn();
+    updateForgotCard();
+    updatePreCard();
     // 「予定どおりで埋める」の出る/出ないが変わったら一覧を描き直す（打刻忘れに気づけるように）
     var st0 = curStage();
     if(st0){
@@ -1204,7 +1398,7 @@ function tick(){
     // 進行中: 残り時間
     var p = predict(st,i);
     var rem = p.e - n;
-    L.textContent = (a.anchor?'進行中 — ':'本番中 — ') + a.name;
+    L.textContent = a.anchor ? '▶ MUSIC STOP 中' : ('▶ 本番中 — ' + a.name);
     T.textContent = '終了予定 ' + fmt(p.e);
     Sb.textContent = rem>=0 ? '残り' : 'セットオーバー';
     V.textContent = (rem<0?'+':'') + Math.floor(Math.abs(rem)/60) + ':' + String(Math.abs(rem)%60).padStart(2,'0');
@@ -1214,19 +1408,31 @@ function tick(){
     if(prev && prev.aEnd !== null){
       // 転換中: 経過
       var el = n - prev.aEnd;
-      L.textContent = '転換中 → ' + a.name;
-      T.textContent = '標準 ' + S.cfg.change + '分';
-      Sb.textContent = '経過';
-      V.textContent = Math.floor(el/60) + ':' + String(Math.max(0,el)%60).padStart(2,'0');
-      V.style.color = el > S.cfg.change ? 'var(--bad)' : (el > S.cfg.change-5 ? 'var(--warn)' : 'var(--acc)');
+      L.textContent = '🔧 転換中 → 次は ' + a.name;
+      T.textContent = '目安 ' + S.cfg.change + '分';
+      if(preEvent()){
+        Sb.textContent = '本番前（練習用）';
+        V.textContent = '--:--';
+        V.style.color = 'var(--tx2)';
+      } else {
+        Sb.textContent = '経過';
+        V.textContent = Math.floor(el/60) + ':' + String(Math.max(0,el)%60).padStart(2,'0');
+        V.style.color = el > S.cfg.change ? 'var(--bad)' : (el > S.cfg.change-5 ? 'var(--warn)' : 'var(--acc)');
+      }
     } else {
       var p2 = predict(st,i);
       var to = p2.s - n;
-      L.textContent = '次 — ' + a.name;
+      L.textContent = '⏳ 次は ' + a.name;
       T.textContent = '開始予定 ' + fmt(p2.s);
-      Sb.textContent = to>=0 ? '開始まで' : '開始予定を超過';
-      V.textContent = (to<0?'+':'') + Math.floor(Math.abs(to)/60) + ':' + String(Math.abs(to)%60).padStart(2,'0');
-      V.style.color = to<0 ? 'var(--bad)' : 'var(--tx)';
+      if(preEvent()){
+        Sb.textContent = '本番前（練習用）';
+        V.textContent = '--:--';
+        V.style.color = 'var(--tx2)';
+      } else {
+        Sb.textContent = to>=0 ? '開始まで' : '開始予定を超過';
+        V.textContent = (to<0?'+':'') + Math.floor(Math.abs(to)/60) + ':' + String(Math.abs(to)%60).padStart(2,'0');
+        V.style.color = to<0 ? 'var(--bad)' : 'var(--tx)';
+      }
     }
   }
 }
@@ -1234,7 +1440,28 @@ setInterval(function(){ tick(); }, 1000);
 
 // ===== プリセット UI =====
 var curCat = 6, curPreset = null;   // 初期表示はライブPC
+var COMMON_NAMES = ['片チャンネルだけ音が出ない','USB/SDを認識しない','CDJがフリーズ・要再起動','音が出ない（PC→ミキサーのLINE）','音がブチブチ切れる（ドロップアウト）','ハウリング'];
+function findPresetIndex(name){
+  for(var i=0;i<PRESETS.length;i++){ if(PRESETS[i].n===name) return i; }
+  return -1;
+}
+function renderCommon(){
+  var cg = document.getElementById('commonGrid'); if(!cg) return;
+  cg.innerHTML='';
+  COMMON_NAMES.forEach(function(nm){
+    var i = findPresetIndex(nm);
+    if(i<0) return;
+    var p = PRESETS[i];
+    var cnt = S.logs.filter(function(l){return l.pid===i;}).length;
+    var b=document.createElement('button');
+    b.className='pbtn';
+    b.innerHTML = '<span class="s s'+p.sev+'"></span>' + esc(p.n) + (cnt? '<span class="cnt">'+cnt+'件</span>' : '');
+    b.onclick = (function(idx){ return function(){ openCard(idx); }; })(i);
+    cg.appendChild(b);
+  });
+}
 function renderPresets(){
+  renderCommon();
   var t = document.getElementById('catTabs'); t.innerHTML='';
   CAT_ORDER.forEach(function(i){
     var b=document.createElement('button');
@@ -1306,8 +1533,7 @@ function saveCard(){
     (entry.impact?'　押し+'+entry.impact+'分':'')+
     (entry.memo?'　'+entry.memo:''));
   save(); closeCard(); renderLogs(); renderPresets();
-  if(S.mode==='sm'){ copy(makeTroubleReport(S.logs[S.logs.length-1])); toast('記録＋報告文コピー済。LINEに貼って'); }
-  else toast('記録しました');
+  toast('記録しました');
 }
 
 // ===== logs =====
@@ -1377,17 +1603,23 @@ function askTakeRole(){
 function renderRole(){
   var el=document.getElementById('roleTag');
   if(el){
+    el.onclick = null; el.style.cursor = 'default';
     if(!S.sync || !S.sync.dev){ el.textContent=''; }
-    else if(!S.roleDev){ el.textContent='打刻担当：未設定（誰でも打刻できます）'; el.style.color='var(--tx2)'; }
-    else if(isStamper()){ el.textContent='打刻担当：あなた（'+S.roleDev+'）'; el.style.color='var(--acc)'; }
-    else { el.textContent='打刻担当：'+S.roleDev+'　※あなたは閲覧のみ'; el.style.color='var(--warn)'; }
+    else if(!S.roleDev){ el.textContent='記録担当：まだ誰も（誰でも押せます）'; el.style.color='var(--tx2)'; }
+    else if(isStamper()){ el.textContent='✅ 記録担当：あなた（'+S.roleDev+'）'; el.style.color='var(--acc)'; }
+    else {
+      el.textContent='🔒 いま記録するのは '+S.roleDev+' さん。交代するときはここをタップ';
+      el.style.color='var(--warn)';
+      el.style.cursor='pointer';
+      el.onclick=function(){ askTakeRole(); };
+    }
   }
   var s=document.getElementById('btnStart'), e2=document.getElementById('btnEnd');
   var off=!isStamper();
   if(s) s.classList.toggle('locked', off);
   if(e2) e2.classList.toggle('locked', off);
   var r=document.getElementById('roleNow');
-  if(r) r.textContent = S.roleDev ? ('現在の打刻担当：'+S.roleDev) : '現在の打刻担当：未設定';
+  if(r) r.textContent = S.roleDev ? ('現在の記録担当：'+S.roleDev) : '現在の記録担当：未設定';
 }
 
 // ===== 設定リンク（1タップで共有設定を入れる） =====
@@ -1489,6 +1721,12 @@ function pullEvents(){
       var r=(typeof t==='string')?JSON.parse(t):t;
       pullEvents._busy=false;
       if(!r || !r.ok) return;
+      // 統括がGAS側で記録を消す（clearEvents）と通し番号が1に戻る。
+      // 自分の読み取り位置がサーバーの最新より先にあったら、先頭から取り直す（取りこぼし防止）
+      if(typeof r.last==='number' && (S.sync.last||0) > r.last){
+        S.sync.last=0; S.feed=[]; save();
+        if(r.last>0){ setTimeout(pullEvents, 300); return; }
+      }
       var changed=false;
       (r.events||[]).forEach(function(ev){ if(applyEvent(ev)) changed=true; addFeed(ev); });
       S.sync.last=r.last||S.sync.last;
@@ -1555,13 +1793,13 @@ function applyEvent(ev){
 
 function syncBadge(){
   var el=document.getElementById('syncTag'); if(!el) return;
-  if(!syncOn()){ el.textContent='同期オフ'; el.style.color='var(--tx2)'; return; }
+  if(!syncOn()){ el.textContent='○ 共有していません'; el.style.color='var(--tx2)'; return; }
   var q=S.sync.outbox.length;
-  if(S.sync.lastErr){ el.textContent='送信エラー'+(q?' / 未送信'+q:'')+'（設定→接続テスト）'; el.style.color='var(--bad)'; return; }
-  if(!S.sync.lastOk){ el.textContent='同期待ち'+(q?'（未送信'+q+'）':''); el.style.color='var(--warn)'; return; }
-  var m=Math.floor((Date.now()-S.sync.lastOk)/60000);
-  el.textContent='同期 '+(m<1?'たった今':m+'分前')+(q?' / 未送信'+q:'');
-  el.style.color=(q||m>=5)?'var(--warn)':'var(--tx2)';
+  if(S.sync.lastErr){ el.textContent='● 送れていません（設定→困ったとき→接続テスト）'; el.style.color='var(--bad)'; return; }
+  var m = S.sync.lastOk ? Math.floor((Date.now()-S.sync.lastOk)/60000) : null;
+  var stale = (m===null) || m>=5;
+  if(q>0 || stale){ el.textContent='● 未送信 '+q+'件（電波を確認）'; el.style.color='var(--warn)'; return; }
+  el.textContent='● つながっています'; el.style.color='var(--acc)';
 }
 
 function saveSync(){
@@ -1606,13 +1844,18 @@ function setMode(m){
 }
 function applyMode(){
   var lead = (S.mode !== 'sm');
-  document.getElementById('reportCard').classList.toggle('hide', !lead);
-  document.getElementById('smCopyBtn').classList.toggle('hide', lead);
-  document.getElementById('stampNote').textContent = lead
-    ? '打刻すると以降の予測時刻と押しが自動で再計算されます'
-    : '打刻すると報告文が自動でコピーされます。LINEに貼るだけ。';
+  document.getElementById('smCopyBtn').classList.add('hide');   // 常に非表示（LINE貼り保険ボタンに統合）
   var a=document.getElementById('mdLead'), b=document.getElementById('mdSm');
   if(a&&b){ a.className = lead?'p':''; b.className = lead?'':'p'; }
+  // 進行画面のカード順（要素を移動するだけ。複製はしない）
+  // 統括: 最近の動き → 打刻忘れ → いまカード → タイテ
+  // 現場SM: 打刻忘れ → いまカード → 最近の動き → タイテ（ボタンを一番上に）
+  var run = document.getElementById('v-run'), reportCard = document.getElementById('reportCard'),
+      forgotCard = document.getElementById('forgotCard'), stageGrid = document.getElementById('stageGrid');
+  if(run && reportCard && forgotCard && stageGrid){
+    if(lead) run.insertBefore(reportCard, forgotCard);
+    else run.insertBefore(reportCard, stageGrid);
+  }
 }
 // 進行報告テキスト（人が読める本文＋機械が読む末尾行）
 function makeReport(){
@@ -1679,10 +1922,12 @@ function feedLabel(k){
   return {stamp:'打刻', log:'トラブル', logdel:'記録削除', call:'呼び出し', role:'担当', reset:'リセット', reject:'送信拒否'}[k]||k;
 }
 function renderReports(){
+  var sTag = document.getElementById('silenceTag');
+  if(sTag) sTag.classList.toggle('hide', S.mode==='sm');
   var el = document.getElementById('rxList');
   var fd = (S.feed||[]).filter(function(x){return x.note;});
   if(fd.length){
-    el.innerHTML = fd.slice().reverse().slice(0,20).map(function(x){
+    el.innerHTML = fd.slice().reverse().slice(0, S.mode==='sm'?3:20).map(function(x){
       var t=(x.ts||'').match(/\d{1,2}:\d{2}/);
       return '<div class="logitem"><div class="mt">'+(t?esc(t[0]):'')+'　'+esc(x.dev)+'</div>'+
         '<b style="color:'+feedColor(x.kind)+'">['+feedLabel(x.kind)+']</b> '+esc(x.note)+'</div>';
@@ -1706,7 +1951,7 @@ function renderReports(){
 function renderRx(){
   var on=syncOn();
   var a=document.getElementById('rxAuto'), m=document.getElementById('rxManual');
-  if(a) a.classList.toggle('hide', !on);
+  if(a) a.classList.toggle('hide', !on || S.mode==='sm');
   if(m) m.classList.toggle('hide', on);
 }
 function renderSilence(){
@@ -1781,6 +2026,7 @@ function resetAll(){
   if(!confirm('打刻とトラブルログを全部消します。\n\n共有がオンなら【全員の端末】からも消えます。\n共有設定・タイムテーブルは残ります。\n\nよろしいですか？')) return;
   pushEvent('reset',{scope:'all'}, '記録を全消去（全端末）');
   S.logs = []; S.reports = []; S.feed = []; S.deletedLogs = []; S.lastRx = null; S.roleDev = '';
+  S.sync.last = 0;   // 読み取り位置も先頭に戻す（GAS側で記録を消した直後の取りこぼし防止）
   S.stages.forEach(function(st){ st.acts.forEach(function(a){ a.aStart=null; a.aEnd=null; }); });
   save(); render(); toast('消去しました');
 }
@@ -1791,7 +2037,7 @@ function dl(content, name, type){
 }
 
 // ===== マニュアル描画 =====
-var manOpen = {};
+var manOpen = {0:true,1:true};
 function renderManual(){
   var q = (document.getElementById('manSearch').value||'').trim().toLowerCase();
   var el = document.getElementById('manList'); el.innerHTML='';
@@ -1843,9 +2089,27 @@ function view(v){
     var el = document.getElementById('v-'+x); if(el) el.classList.toggle('hide', x!==v);
     var fb = document.getElementById('fb-'+x); if(fb) fb.className = (x===v?'p':'');
   });
-  document.getElementById('nowBtn').classList.toggle('hide', v!=='run');
+  document.getElementById('nowBtn').classList.toggle('hide', v!=='all');
   window.scrollTo(0,0);
-  if(v==='run') setTimeout(jumpToNow, 60);
+  if(v==='all') setTimeout(jumpToNow, 60);
+}
+// ===== 設定「統括のみ」の折りたたみ =====
+var leadOpen = false;
+function toggleLead(){
+  leadOpen = !leadOpen;
+  document.getElementById('leadBody').classList.toggle('hide', !leadOpen);
+  document.getElementById('leadToggleIcon').textContent = leadOpen ? '−' : '＋';
+}
+// ===== 初回起動シート =====
+function welcomeGo(){
+  var n = document.getElementById('wName').value.trim();
+  if(!n){ toast('名前を入れてください'); return; }
+  S.sync.dev = n;
+  document.getElementById('syDev').value = n;
+  if(SETUP_APPLIED) S.mode = 'sm';
+  save(); applyMode(); render();
+  document.getElementById('welcome').classList.add('hide');
+  toast('準備できました');
 }
 function toast(m){
   var t = document.getElementById('toast'); t.textContent = m; t.classList.add('on');
@@ -1875,12 +2139,6 @@ syncBadge();
 setInterval(function(){ flushOutbox(); pullEvents(); }, 20000);
 if(SETUP_APPLIED){
   setTimeout(function(){
-    if(!S.sync.dev){
-      var n=null;
-      try{ n=prompt('共有設定を読み込みました。\nあなたの名前を入れてください（記録に残ります）',''); }catch(e){}
-      S.sync.dev=(n||'').trim(); save();
-      document.getElementById('syDev').value=S.sync.dev;
-    }
     syncBadge(); pullEvents();
     toast('共有設定が入りました');
   }, 900);
@@ -1922,6 +2180,10 @@ if(!S.stages.length){
     render();
     view('run');
   }
+}
+// 名前が未入力の端末（初回起動・配布リンク経由とも）には必ず「はじめに」シートを出す
+if(!S.sync.dev){
+  document.getElementById('welcome').classList.remove('hide');
 }
 </script>
 </body>
