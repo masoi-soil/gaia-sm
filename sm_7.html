@@ -1,0 +1,2190 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SM">
+<meta name="theme-color" content="#0b0d10">
+<meta name="format-detection" content="telephone=no">
+<title>SM統括ダッシュボード</title>
+<style>
+:root{
+  --bg:#0b0d10; --panel:#14181d; --panel2:#1b2027; --line:#2a323c;
+  --tx:#e8edf3; --tx2:#9aa7b5; --acc:#4ade80; --warn:#fbbf24; --bad:#f87171; --live:#38bdf8;
+  --hdr:rgba(11,13,16,.95);
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+}
+/* 日中の屋外用：直射日光下でも読める高コントラスト */
+body.day{
+  --bg:#ffffff; --panel:#f4f6f8; --panel2:#e8ecf0; --line:#c3ccd6;
+  --tx:#0a0e13; --tx2:#4d5a68; --acc:#0f8f43; --warn:#a86a00; --bad:#c9252d; --live:#0369a1;
+  --hdr:rgba(255,255,255,.96);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;font-size:17px;line-height:1.5;
+  padding-bottom:calc(84px + var(--sab));overscroll-behavior-y:contain}
+header{position:sticky;top:0;z-index:50;background:var(--hdr);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
+  padding:calc(8px + var(--sat)) 12px 8px}
+.hrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.clock{font-size:32px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.5px;line-height:1}
+.badge{padding:6px 12px;border-radius:999px;font-weight:800;font-size:15px;font-variant-numeric:tabular-nums}
+.iconbtn{min-width:44px;min-height:38px;padding:7px 11px;font-size:15px}
+.ok{background:rgba(74,222,128,.15);color:var(--acc)}
+.wr{background:rgba(251,191,36,.15);color:var(--warn)}
+.bd{background:rgba(248,113,113,.15);color:var(--bad)}
+.sub{color:var(--tx2);font-size:13px}
+.tabs{display:flex;gap:6px;margin-top:9px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;min-height:42px;padding:10px 16px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--tx2);font-weight:700;font-size:15px;cursor:pointer}
+.tab.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+main{padding:12px;max-width:1400px;margin:0 auto}
+.grid{display:grid;gap:12px;grid-template-columns:1fr}
+@media(min-width:900px){.grid.multi{grid-template-columns:repeat(auto-fit,minmax(360px,1fr))}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.card h2{margin:0;padding:12px 14px;font-size:14px;letter-spacing:.05em;color:var(--tx2);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.act{display:grid;grid-template-columns:74px 1fr auto;gap:10px;align-items:center;padding:14px 12px;border-bottom:1px solid var(--line)}
+.act:last-child{border-bottom:none}
+.act.live{background:rgba(56,189,248,.09);box-shadow:inset 3px 0 0 var(--live)}
+.act.done{opacity:.45}
+.act.next{box-shadow:inset 3px 0 0 var(--warn)}
+.act.anchor{background:rgba(74,222,128,.07)}
+.act.anchor .nm{color:var(--acc)}
+.tm{font-variant-numeric:tabular-nums;font-weight:800;font-size:16px;line-height:1.25}
+.tm .pred{display:block;font-size:13px;font-weight:800;color:var(--warn)}
+.nm{font-weight:700;font-size:17px;overflow-wrap:anywhere;line-height:1.35}
+.nm small{display:block;color:var(--tx2);font-weight:600;font-size:13px;margin-top:3px}
+.btns{display:flex;gap:6px}
+button{font-family:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--tx);
+  padding:13px 14px;font-weight:700;font-size:16px;min-height:48px;touch-action:manipulation}
+button:active{transform:scale(.97);opacity:.85}
+button.p{background:var(--live);border-color:var(--live);color:#fff}
+body:not(.day) button.p{color:#04121b}
+button.g{background:var(--acc);border-color:var(--acc);color:#fff}
+body:not(.day) button.g{color:#062611}
+button.sm{padding:8px 12px;font-size:14px;min-height:38px}
+button.gh{background:transparent;color:var(--tx2)}
+button.locked{opacity:.38;filter:grayscale(.7)}
+.bigtimer{text-align:center;padding:18px 12px}
+.bigtimer .v{font-size:60px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-1px}
+.bigtimer .l{color:var(--tx2);font-size:14px;margin-bottom:5px}
+textarea,input,select{width:100%;background:var(--panel2);color:var(--tx);border:1px solid var(--line);border-radius:10px;
+  padding:13px 12px;font-family:inherit;font-size:16px;min-height:48px}
+textarea{min-height:150px;font-variant-numeric:tabular-nums;line-height:1.6}
+.pad{padding:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1;min-width:130px}
+.logitem{padding:13px 12px;border-bottom:1px solid var(--line);font-size:15px}
+.logitem b{color:var(--warn)}
+.logitem .mt{color:var(--tx2);font-size:12px;font-variant-numeric:tabular-nums}
+.hide{display:none!important}
+.note{color:var(--tx2);font-size:12px;line-height:1.6}
+.fab{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;gap:6px;
+  padding:8px 10px calc(8px + var(--sab));background:var(--hdr);backdrop-filter:blur(10px);border-top:1px solid var(--line)}
+.fab button{flex:1;padding:12px 4px;font-size:16px;min-height:54px}
+.toast{position:fixed;bottom:calc(86px + var(--sab));left:50%;transform:translateX(-50%);max-width:92%;text-align:center;
+  background:var(--acc);color:#fff;padding:13px 20px;border-radius:14px;font-weight:800;font-size:15px;z-index:100;opacity:0;transition:opacity .2s;pointer-events:none}
+body:not(.day) .toast{color:#062611}
+.toast.on{opacity:1}
+/* 現在地へ戻る */
+.nowbtn{position:fixed;right:12px;bottom:calc(88px + var(--sab));z-index:55;border-radius:999px;padding:12px 18px;
+  background:var(--live);border-color:var(--live);color:#fff;font-weight:800;box-shadow:0 4px 16px rgba(0,0,0,.35)}
+body:not(.day) .nowbtn{color:#04121b}
+/* プリセット */
+.pgrid{display:grid;grid-template-columns:1fr;gap:8px;padding:12px}
+@media(min-width:520px){.pgrid{grid-template-columns:1fr 1fr}}
+@media(min-width:900px){.pgrid{grid-template-columns:repeat(3,1fr)}}
+.pbtn{text-align:left;padding:15px 34px 15px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);
+  color:var(--tx);font-weight:700;font-size:16px;line-height:1.4;position:relative;min-height:58px}
+.pbtn .s{position:absolute;top:50%;right:13px;transform:translateY(-50%);width:12px;height:12px;border-radius:50%}
+.pbtn .cnt{display:inline-block;margin-top:5px;font-size:13px;font-weight:800;color:var(--warn)}
+.s1{background:var(--bad)} .s2{background:var(--warn)} .s3{background:var(--acc)}
+/* モーダル */
+.modal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
+@media(min-width:700px){.modal{align-items:center}}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:620px;max-height:92vh;display:flex;flex-direction:column}
+@media(min-width:700px){.sheet{border-radius:18px;max-height:88vh}}
+.sheetHead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:14px;border-bottom:1px solid var(--line)}
+.mdName{font-size:21px;font-weight:800;line-height:1.3;margin-top:6px}
+.sevtag{display:inline-block;font-size:12px;font-weight:800;padding:4px 10px;border-radius:999px}
+.sheetBody{padding:14px calc(14px + var(--sab)) calc(14px + var(--sab));overflow-y:auto;-webkit-overflow-scrolling:touch}
+.steplabel{font-size:13px;color:var(--tx2);font-weight:800;letter-spacing:.04em;margin-bottom:8px}
+.steps{margin:0 0 16px;padding-left:24px}
+.steps li{margin-bottom:11px;line-height:1.6;font-size:17px}
+.steps li b{color:var(--live)}
+.steps li.stop{color:var(--bad);font-weight:700}
+.ustat{display:flex;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--line);font-size:14px}
+.ustat:last-child{border-bottom:none}
+.ustat b{font-variant-numeric:tabular-nums}
+.ustat.alert b{color:var(--bad)}
+/* マニュアル */
+.callbox{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:15px;font-size:17px;line-height:1.85}
+.mbody{padding:15px;font-size:17px;line-height:1.8}
+.mbody p{margin:0 0 14px}
+.mbody p:last-child,.mbody ul:last-child,.mbody ol:last-child,.mbody table:last-child{margin-bottom:0}
+.mbody .big{font-size:23px;font-weight:800;text-align:center;padding:12px 0;letter-spacing:.01em;line-height:1.4}
+.mbody .hl{background:rgba(56,189,248,.1);border-left:4px solid var(--live);padding:13px 14px;border-radius:0 10px 10px 0}
+body.day .mbody .hl{background:rgba(3,105,161,.09)}
+.mbody .rd{color:var(--bad)}
+.mbody .gr{color:var(--acc)}
+.mbody .q{color:var(--tx2)}
+.mbody ul.mt{margin:0 0 14px;padding-left:22px}
+.mbody ul.mt li{margin-bottom:11px}
+.mbody ul.chk{list-style:none;padding-left:0}
+.mbody ul.chk li{padding-left:30px;position:relative;margin-bottom:13px}
+.mbody ul.chk li:before{content:'☐';position:absolute;left:0;font-size:20px;color:var(--tx2)}
+.mbody table{width:100%;border-collapse:collapse;font-size:16px}
+.mbody th,.mbody td{border-bottom:1px solid var(--line);padding:11px 6px;text-align:left;vertical-align:top}
+.mbody th{color:var(--tx2);font-size:13px}
+.mbody td.rd{color:var(--bad);font-weight:700}
+.mbody td.gr{color:var(--acc);font-weight:700}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <div class="clock" id="clock">--:--</div>
+    <div class="badge ok" id="delayBadge">押し 0分</div>
+    <div class="badge wr hide" id="finBadge"></div>
+    <div style="flex:1"></div>
+    <span class="sub" id="syncTag" style="font-size:12px">同期オフ</span>
+    <span class="sub" id="verHead" style="font-size:11px;opacity:.6">v10</span>
+    <button class="iconbtn gh" id="themeBtn" onclick="toggleTheme()" title="昼夜切替">☀</button>
+    <button class="iconbtn gh" onclick="view('setup')">設定</button>
+  </div>
+  <div class="sub" id="statusLine" style="margin-top:5px">読み込み中…</div>
+  <div class="tabs hide" id="tabs"></div>
+</header>
+
+<main>
+  <!-- 進行ビュー -->
+  <div id="v-run">
+    <!-- 本番前の練習モード告知（本番前のみ表示・常に最上部） -->
+    <div class="card hide" id="preCard" style="margin-bottom:12px;border-color:var(--warn)">
+      <div class="pad">
+        <div style="font-weight:800;color:var(--warn)">🧪 本番前（9/19 14:00 開始）。いまは練習用です。</div>
+        <div class="note" style="margin-top:6px">自由に押して試してOK。押しの数字は本番まで出ません。本番前に統括が記録を全部消します。</div>
+      </div>
+    </div>
+
+    <!-- 最近の動き（全員に表示） -->
+    <div class="card" id="reportCard" style="margin-bottom:12px">
+      <h2><span>最近の動き</span><span class="sub" id="silenceTag">—</span></h2>
+      <div id="rxList"></div>
+      <div class="pad" id="rxAuto" style="border-top:1px solid var(--line)">
+        <div class="note">誰が打刻・記録したか、演者から呼び出しがあったかが<b>ここに流れます。</b></div>
+      </div>
+    </div>
+
+    <!-- 打刻忘れバナー -->
+    <div class="card hide" id="forgotCard" style="margin-bottom:12px;border-color:var(--warn)">
+      <div class="pad">
+        <div style="font-weight:800;color:var(--warn)" id="forgotTitle">⚠ 開始、押し忘れていませんか？</div>
+        <div class="note" style="margin-top:6px" id="forgotNote">予定終了を過ぎています。実際は終わっているなら下のボタンで「予定どおり」として記録して次へ進めます。</div>
+        <button class="g" id="forgotBtn" style="width:100%;margin-top:10px">予定どおりで埋めて次へ</button>
+      </div>
+    </div>
+
+    <!-- いまカード -->
+    <div class="card" id="timerCard" style="margin-bottom:12px">
+      <h2><span id="timerLabel">転換タイマー</span><span class="sub" id="timerTarget"></span></h2>
+      <div class="bigtimer">
+        <div class="l" id="timerSub">待機中</div>
+        <div class="v" id="timerVal">--:--</div>
+        <div style="margin-top:14px;max-width:420px;margin-left:auto;margin-right:auto">
+          <button class="g" id="btnStart" onclick="stampStart()" style="width:100%;min-height:64px;font-size:20px">▶ 始まった</button>
+          <button class="p" id="btnEnd" onclick="stampEnd()" style="width:100%;min-height:64px;font-size:20px">■ 終わった</button>
+          <button class="gh sm hide" id="undoLast" onclick="undoLastClick()" style="width:100%;margin-top:8px">さっきの記録を取り消す</button>
+        </div>
+        <div class="sub" id="roleTag" style="margin-top:10px;font-weight:700"></div>
+        <div class="note" id="stampNote" style="margin-top:8px">音が出た瞬間に押してください（打刻）</div>
+      </div>
+    </div>
+    <div class="grid multi" id="stageGrid"></div>
+  </div>
+
+  <!-- 全体ビュー -->
+  <div id="v-all" class="hide">
+    <div class="grid multi" id="allGrid"></div>
+  </div>
+
+  <!-- ログビュー -->
+  <div id="v-log" class="hide">
+    <div class="card" style="margin-bottom:12px">
+      <h2>何が起きた？<span class="sub">タップ → 手順が出る → 記録する</span></h2>
+      <div class="steplabel" style="padding:12px 12px 0">よくある6つ</div>
+      <div class="pgrid" id="commonGrid"></div>
+      <div class="steplabel" style="padding:12px 12px 0">機材別にさがす</div>
+      <div class="tabs" id="catTabs" style="padding:10px 12px 0"></div>
+      <div class="note" style="padding:6px 12px 0">● <span style="color:var(--bad)">赤</span>＝音が止まる　<span style="color:var(--warn)">黄</span>＝音は出ている　<span style="color:var(--acc)">緑</span>＝予兆・記録だけ</div>
+      <div id="presetGrid" class="pgrid"></div>
+      <div class="pad" style="border-top:1px solid var(--line)">
+        <button class="gh sm" onclick="openCard(null)" style="width:100%">＋ 一覧にない事象を自由入力で記録</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px" id="unitCard">
+      <h2>機材個体別の発生回数<span class="sub">3回で交換を検討</span></h2>
+      <div id="unitStats"><div class="pad note">まだ記録はありません</div></div>
+    </div>
+
+    <div class="card">
+      <h2>記録 <span><button class="sm gh" onclick="exportCSV()">CSV</button><button class="sm gh" onclick="copyLogSummary()">日報コピー</button></span></h2>
+      <div id="logList"><div class="pad note">まだ記録はありません</div></div>
+    </div>
+  </div>
+
+  <!-- マニュアルビュー -->
+  <div id="v-man" class="hide">
+    <div class="card" style="margin-bottom:12px;border-color:var(--bad)">
+      <h2 style="color:var(--bad)">緊急時 — 電話の第一声</h2>
+      <div class="pad">
+        <div class="callbox">「<b>場所</b>、<b>事象</b>、<b>人数</b>、SMの◯◯です」</div>
+        <div class="note" style="margin-top:8px">
+          例：「メインステージ下手袖、意識のある転倒1名、救護お願いします。SMの◯◯です」<br><br>
+          <b>救護・警備は無線に乗っていません。電話が唯一の経路です。</b><br>
+          電話する人と現場に残る人を必ず分ける。3コール出なければランナーを走らせる。<br><br>
+          <b>意識がない／呼吸が怪しい／けいれん／頭を打った → 迷わず119。</b>呼んで問題になることはない。
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="pad" style="padding-bottom:0">
+        <input id="manSearch" placeholder="キーワードで探す（例: 雷 / 押し / 転換 / 救護）" oninput="renderManual()">
+      </div>
+      <div class="pad note">タップで開閉します</div>
+    </div>
+    <div id="manList"></div>
+  </div>
+
+  <!-- 設定ビュー -->
+  <div id="v-setup" class="hide">
+    <!-- A. あなた -->
+    <div class="card" style="margin-bottom:12px;border-color:var(--acc)">
+      <h2 style="color:var(--acc)">あなた</h2>
+      <div class="pad">
+        <label class="note">あなたの名前（無線の呼び名と同じに）</label>
+        <input id="syDev" placeholder="例: 統括 / SM田中" style="margin-bottom:8px">
+        <button class="g" onclick="saveSync()" style="width:100%">保存</button>
+        <div class="note" id="roleNow" style="margin-top:14px;font-weight:700">現在の記録担当：未設定</div>
+        <button class="p" onclick="takeRole()" style="width:100%;margin-top:6px">記録担当を自分にする</button>
+        <div class="note" style="margin-top:8px">記録できるのは担当の1台だけ。シフト交代のときは次の人がこのボタンを押す。</div>
+      </div>
+    </div>
+
+    <!-- B. 困ったとき -->
+    <div class="card" style="margin-bottom:12px;border-color:var(--live)">
+      <h2 style="color:var(--live)">困ったとき</h2>
+      <div class="pad">
+        <div class="row">
+          <button class="p" onclick="syncNow()">今すぐ同期</button>
+          <button onclick="testSync()">接続テスト</button>
+        </div>
+        <div id="syResult" class="note" style="margin-top:8px"></div>
+        <div class="note" style="margin-top:8px">電波が切れても記録はできます。つながった時にまとめて送ります。</div>
+        <div class="row" style="margin-top:12px">
+          <button class="gh" onclick="location.reload()">画面を再読み込み</button>
+          <button class="gh" onclick="toggleTheme()">昼夜モード切替</button>
+        </div>
+        <div class="pad note" style="padding:14px 0 0"><b style="font-size:15px;color:var(--live)">バージョン <span id="verTag">v10</span></b><br>全員が同じ版数か確認してください。違っていたら、そのページを再読み込みしてください。</div>
+      </div>
+    </div>
+
+    <!-- C. 統括のみ（折りたたみ） -->
+    <div class="card" style="margin-bottom:12px;border-color:var(--bad)" id="leadCard">
+      <h2 style="cursor:pointer" onclick="toggleLead()"><span>🔒 統括のみ（SMは開かない）</span><span class="sub" id="leadToggleIcon">＋</span></h2>
+      <div id="leadBody" class="hide">
+        <div class="pad">
+          <div class="note rd">ここを触ると全員の画面が変わります。統括以外は閉じてください。</div>
+        </div>
+
+        <div class="card" style="margin:0 12px 12px;border-color:var(--acc)">
+          <h2 style="color:var(--acc)">本番タイムテーブル</h2>
+          <div class="pad">
+            <div class="note" style="margin-bottom:10px">起動時に自動で読み込まれます。表示がおかしい時や、打刻をやり直したい時だけ下を押してください。</div>
+            <button class="g" onclick="reloadReal()" style="width:100%">本番タイテを入れ直す（打刻・ログは消えます）</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin:0 12px 12px">
+          <h2>タイムテーブルを編集・差し替え</h2>
+          <div class="pad">
+            <div class="note" style="margin-bottom:8px">
+              <b>形式</b>（1行1アクト。区分名〈DAY1など〉は <code>#</code> で始める）<br>
+              <code>#DAY1 9/19</code><br>
+              <code>20:00-21:00 ARTIST A</code><br>
+              <code>22:00 ARTIST B</code> ← 終了時刻を省くと次アクトの開始時刻を自動採用<br>
+              <code>!13:00-15:00 サイレントタイム</code> ← 行頭 <code>!</code> で<b>押しリセット枠</b>。この枠を過ぎると押しが0に戻る<br>
+              深夜跨ぎ（<code>26:00</code> でも <code>02:00</code> でも可）に対応。
+            </div>
+            <textarea id="ttInput" placeholder="#DAY1 9/19
+20:00-21:00 ARTIST A
+22:00-23:30 ARTIST B
+!13:00-15:00 サイレントタイム"></textarea>
+            <div class="row" style="margin-top:10px">
+              <button class="g" onclick="loadTT()">読み込む</button>
+              <button class="p" onclick="loadDemo()">本番のタイテを入れる</button>
+            </div>
+            <div class="note" style="margin-top:8px">◆＝ライブアクト（転換が必要）　★＝次もライブ（連続転換の要注意箇所）</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin:0 12px 12px;border-color:var(--live)">
+          <h2 style="color:var(--live)">みんなで共有する（打刻・ログ）</h2>
+          <div class="pad">
+            <div class="note" style="margin-bottom:10px">
+              ここを設定すると、<b>誰が打刻・記録しても全員の画面に反映されます。</b><br>
+              統括は自分の端末を見ているだけで、全体の進行が分かります。
+            </div>
+            <label class="note">共有URL（GASのウェブアプリURL。呼び出しボタンと同じもの）</label>
+            <input id="syUrl" placeholder="https://script.google.com/macros/s/..../exec" style="margin-bottom:8px">
+            <label class="note">合言葉</label>
+            <input id="syKey" placeholder="合言葉を入力" style="margin-bottom:10px">
+            <div class="row">
+              <button class="g" onclick="saveSync()">保存</button>
+              <button class="p" onclick="testSync()">接続テスト</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button id="syToggle" onclick="toggleSync()">同期オン</button>
+            </div>
+            <button class="g" onclick="makeSetupLink()" style="width:100%;margin-top:8px">配布用リンクを作る（SMに送る）</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin:0 12px 12px">
+          <h2>この端末の役割</h2>
+          <div class="pad">
+            <div class="row" style="margin-bottom:8px">
+              <button id="mdLead" onclick="setMode('lead')">統括モード</button>
+              <button id="mdSm" onclick="setMode('sm')">現場SMモード</button>
+            </div>
+            <div class="note">
+              <b>統括モード：</b>現場から届いた報告を貼り付けて取り込む。全体の押しを一箇所で把握する。<br>
+              <b>現場SMモード：</b>記録するたびに全員の画面に自動で届きます。<br><br>
+              <b>報告が◯分途絶えたら赤で警告します。</b>統括が動かない代わりに、沈黙を検知します。
+            </div>
+            <div class="row" style="margin-top:10px">
+              <div><div class="note">沈黙警告の閾値（分）</div><input id="cfgSilence" type="number" value="30"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin:0 12px 12px">
+          <h2>設定</h2>
+          <div class="pad">
+            <div class="row" style="margin-bottom:8px">
+              <div><div class="note">開催初日</div><input id="cfgStart" type="date" value="2026-09-19"></div>
+              <div><div class="note">目標転換時間（分）</div><input id="cfgChange" type="number" value="15"></div>
+              <div><div class="note">押し警告の閾値（分）</div><input id="cfgWarn" type="number" value="15"></div>
+              <div><div class="note">エスカレーション閾値（分）</div><input id="cfgEsc" type="number" value="30"></div>
+            </div>
+            <div class="note"><b>開催初日は必ず設定してください。</b>49時間連続の通し計算に使います。ここが違うと全ての時刻がずれます。<br><br>
+            押しが警告閾値（既定15分）を超えると黄色、エスカレーション閾値（既定30分）を超えると赤。<b>赤＝統括に上げる状態</b>。<br>
+            枠は1時間刻みで転換枠は別に取られていません。DJ→DJはシームレス、<b>ライブの前後だけ転換が必要</b>なので、目標転換時間はライブ転換の目標値として使います。</div>
+            <button class="p" onclick="saveCfg()" style="width:100%;margin-top:10px">保存</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin:0 12px 12px">
+          <h2>データ</h2>
+          <div class="pad row">
+            <button onclick="exportJSON()">バックアップ書き出し</button>
+            <button onclick="document.getElementById('imp').click()">読み込み</button>
+            <button class="gh" onclick="resetStamps()">打刻だけリセット</button>
+            <button class="gh" onclick="resetAll()">記録を全消去</button>
+            <input type="file" id="imp" class="hide" accept=".json" onchange="importJSON(this)">
+          </div>
+          <div class="pad note">データはこの端末のブラウザに自動保存されます。オフラインでも動作します。当日は機内モードでも使えます。</div>
+        </div>
+
+        <div class="card" style="margin:0 12px 12px">
+          <h2>現場からの報告を取り込む</h2>
+          <div class="pad hide" id="rxManual">
+            <div class="note" style="margin-bottom:8px">共有がオフです。LINEで届いた報告文を貼れば、ここに反映できます。</div>
+            <textarea id="rxIn" style="min-height:64px" placeholder="LINEで届いた報告文を貼り付け"></textarea>
+            <button class="p" onclick="importReport()" style="width:100%;margin-top:8px">貼り付けた報告を取り込む</button>
+          </div>
+          <div class="pad">
+            <button class="gh" onclick="shareLine()" style="width:100%">進行状況をテキストでコピー</button>
+            <button class="g hide" id="smCopyBtn" onclick="copyReport()" style="width:100%;margin-top:8px">報告文をコピー → LINEに貼る</button>
+            <button class="gh" onclick="copyReport()" style="width:100%;margin-top:8px">進行報告文をコピー（LINE手打ち用の保険）</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="fab">
+  <button id="fb-run" class="p" onclick="view('run')">進行</button>
+  <button id="fb-all" onclick="view('all')">タイテ</button>
+  <button id="fb-log" onclick="view('log')">トラブル</button>
+  <button id="fb-man" onclick="view('man')">手引</button>
+</div>
+
+<!-- 対処カード -->
+<div class="modal hide" id="modal">
+  <div class="sheet">
+    <div class="sheetHead">
+      <div>
+        <div id="mdSev" class="sevtag">—</div>
+        <div id="mdName" class="mdName">—</div>
+      </div>
+      <button class="sm gh" onclick="closeCard()">閉じる</button>
+    </div>
+    <div class="sheetBody">
+      <div id="mdFree" class="hide" style="margin-bottom:12px">
+        <input id="mdFreeName" placeholder="事象を入力">
+      </div>
+      <div class="steplabel">今この場でやること</div>
+      <ol id="mdSteps" class="steps"></ol>
+      <div id="mdPrevWrap">
+        <div class="steplabel">再発防止（自動で記録されます）</div>
+        <div id="mdPrev" class="note" style="margin-bottom:12px"></div>
+      </div>
+      <div class="steplabel">記録する内容</div>
+      <div class="row" style="margin-bottom:8px">
+        <select id="mdUnit"></select>
+        <input id="mdImpact" type="number" placeholder="押し影響(分)">
+      </div>
+      <input id="mdMemo" placeholder="メモ（任意）" style="margin-bottom:10px">
+      <div class="row">
+        <button class="g" onclick="saveCard()">記録する（全員に共有）</button>
+        <button class="gh" onclick="closeCard()">手順だけ見た（記録しない）</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 初回起動シート -->
+<div class="modal hide" id="welcome">
+  <div class="sheet">
+    <div class="sheetHead">
+      <div>
+        <div class="mdName">はじめに（30秒）</div>
+      </div>
+    </div>
+    <div class="sheetBody">
+      <label class="note">あなたの名前</label>
+      <input id="wName" placeholder="無線で使う呼び名" style="margin-bottom:16px">
+      <div class="steplabel">覚えるのは3つ</div>
+      <ol class="steps">
+        <li>音が出たら<b>緑ボタン</b></li>
+        <li>音が止まったら<b>青ボタン</b></li>
+        <li>困ったら下の「トラブル」</li>
+      </ol>
+      <div class="note" style="margin:-6px 0 6px">本番前は自由に押して試してOK（本番前に記録は消します）</div>
+      <button class="g" id="wGo" onclick="welcomeGo()" style="width:100%;margin-top:6px;min-height:56px;font-size:18px">はじめる</button>
+    </div>
+  </div>
+</div>
+
+<button class="nowbtn hide" id="nowBtn" onclick="jumpToNow()">現在地</button>
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== 機材個体 =====
+var UNITS = ['CDJ-1','CDJ-2','DJM-A9','予備CDJ-1','予備CDJ-2','予備ミキサー','MIC-1','MIC-2','ライブPC','オーディオI/F','持込PC(DJ)','モニター','電源/ブレーカー','ケーブル','その他'];
+
+// ===== トラブル対処プリセット =====
+// sev: 1=音が止まる / 2=音は出ている / 3=予兆・記録のみ
+var CATS = ['メディア/CDJ','持込PC(DJ)','ミキサー','マイク','電源/環境','運用','ライブPC'];
+var CAT_ORDER = [6,0,1,2,3,4,5];   // ライブPCを先頭に置く
+var PRESETS = [
+// ---- メディア/CDJ ----
+{c:0,n:'USB/SDを認識しない',sev:1,u:'CDJ-1',
+ s:['<b>鳴っている方のCDJは絶対に触らない。</b>','もう一台のCDJ、または別スロットに挿し替える。','読めれば USB 側ではなく本体側の問題 → その1台を落として片肺で継続。','USB 側なら DJ に予備USBの有無を確認。無ければ次の曲を本体側ライブラリで繋ぐ。','2分で読めなければ<b>予備CDJに差し替え</b>。原因追及はあとで。'],
+ p:'入り時に、そのDJの全USBを予備CDJで読み込みテストする'},
+{c:0,n:'曲が出ない（未解析/形式）',sev:2,u:'CDJ-1',
+ s:['CDJのブラウザを<b>フォルダ表示</b>に切り替えて直接再生を試す。','解析待ちなら時間がかかる。DJに「別の曲で繋いで」と即伝える。','rekordbox書き出しでないUSBは以降も同じことが起きる前提で見張る。'],
+ p:'出演者への事前告知に「rekordbox書き出し必須」を明記する'},
+{c:0,n:'読み込みが極端に遅い',sev:3,u:'CDJ-1',
+ s:['DJに「次の曲を早めにロードして」と伝える。','空いている方のCDJで先読みさせる。','USB2.0や巨大ライブラリが原因。当日は直せないので運用で回避。'],
+ p:'事前告知にUSB3.0推奨・ライブラリ整理を入れる'},
+{c:0,n:'USBの抜き差し事故',sev:1,u:'CDJ-1',
+ s:['<b>片方は必ず前のDJの曲が鳴っている状態を保つ。</b>','空いている方に次のDJのUSBを挿す。','次の曲がロードされたのを<b>目で確認してから</b>前のUSBを抜く。','音が止まったら、まず鳴らせる方のCDJで即座に次の曲を出す。'],
+ p:'転換時のUSB受け渡し手順をブースに貼り出す。DJ任せにしない'},
+{c:0,n:'CDJがフリーズ・要再起動',sev:1,u:'CDJ-1',
+ s:['もう一台で継続することをDJに即伝える（「1台で回して」）。','電源長押しで再起動。復帰まで約1分。','<b>同じ個体で2回目なら、直さず予備CDJに差し替える。</b>'],
+ p:'個体別の発生回数を見て、3回目の前に交換する'},
+{c:0,n:'タッチ/ジョグが効かない（結露）',sev:2,u:'CDJ-1',
+ s:['乾いた布で画面と天板を拭く。','効かなければ再起動。','復帰までジョグを使わない操作（ボタン・ロータリー）で回避するようDJに伝える。','<b>日の出前後は毎日起きる。</b>単発の事故として扱わない。'],
+ p:'日の出2時間前にブース養生と送風を定例作業にする'},
+{c:0,n:'CDJ1台から音が出ない',sev:1,u:'CDJ-1',
+ s:['ミキサーの該当CHの<b>入力切替（DIGITAL/LINE）</b>を確認。','CH FADER と TRIM を確認。','ケーブルの抜けを確認。','空いているCHに挿し替えて、CDJ側かミキサー側かを切り分ける。'],
+ p:'開演前チェックで全CHの音出しを1台ずつ確認する'},
+// ---- 持込PC ----
+{c:1,n:'PCが認識されない',sev:1,u:'持込PC(DJ)',
+ s:['USBケーブルを抜き差し。ハブ経由なら<b>本体に直挿し</b>。','A9のUSB端子はA/Bの2系統。<b>切替ボタンの選択を確認。</b>','ドライバ未導入なら当日は解決しない → <b>CDJ+USB運用への切替を打診。</b>'],
+ p:'PC使用者には入り時にサウンドチェック枠で接続テストを必須にする'},
+{c:1,n:'DVSの音が途切れる',sev:2,u:'持込PC(DJ)',
+ s:['ハブ経由をやめて直挿し。','PCのWi-Fi/Bluetoothと省電力設定をOFFにしてもらう。','改善しなければCDJ運用に切替。粘らない。'],
+ p:'入り時にWi-Fi/Bluetooth/省電力OFFをチェック項目にする'},
+{c:1,n:'PCがスリープ・落ちた',sev:1,u:'持込PC(DJ)',
+ s:['即もう一台のCDJで繋ぐ。復帰を待たない。','電源接続とスリープOFFを復帰後すぐ確認。'],
+ p:'入り時にスリープOFF・電源接続・OS更新OFFを確認する'},
+{c:1,n:'接続切替でマスターが飛んだ',sev:1,u:'DJM-A9',
+ s:['<b>転換時のPC抜き差しは必ずCH FADERを下げてから。</b>','飛んだら該当CHを下げ、鳴っている側だけにする。','マスターは触らない。'],
+ p:'転換手順に「フェーダーを下げてから抜き差し」を明記する'},
+// ---- ミキサー ----
+{c:2,n:'片チャンネルだけ音が出ない',sev:1,u:'ケーブル',
+ s:['<b>MASTER OUT の XLR 片抜けが大半。</b>まず左右の刺さりを確認。','アンプ／スピーカー側の刺さりも確認。','ケーブルを差し替えて切り分け、断線なら予備XLRに交換。','ここまで1分で切り分けられる。'],
+ p:'XLRの予備を必ずブース内に置く。抜け止めを養生する'},
+{c:2,n:'フェーダーの接触不良（砂・埃）',sev:2,u:'DJM-A9',
+ s:['<b>現場でフェーダーを分解しない。</b>','該当CHを使わない運用に切替（空きCHへ移動）。','それでも回らなければ予備ミキサーに差し替え。'],
+ p:'使わない時間はブースカバーを必ずかける'},
+{c:2,n:'モニターが聞こえない',sev:2,u:'モニター',
+ s:['<b>DJがマスターを上げようとしたら止める。</b>これは音圧事故の入口。','BOOTH MONITOR のレベルつまみを確認。','モニタースピーカーの電源とケーブルを確認。','原因が特定できるまで、マスターには触らせない。'],
+ p:'各DJの入りで「モニターはBOOTHで調整、マスターは触らない」と口頭で伝える'},
+{c:2,n:'ヘッドホンが鳴らない',sev:2,u:'DJM-A9',
+ s:['PHONES の LEVEL と MIX、CUEボタンの選択を確認。','端子のガリなら挿し直し。','DJの私物ヘッドホンの断線が多い → <b>ブース常備の予備を貸す。</b>'],
+ p:'予備ヘッドホンをブースに常備する'},
+{c:2,n:'クリップ・レッド振り切り',sev:2,u:'DJM-A9',
+ s:['<b>TRIM を下げる。マスターは触らない。</b>','レベルの基準をDJに伝える。','「前の人より大きく」は必ず起きる。SMが基準を決めて全員に統一する。'],
+ p:'開演前に基準レベルを決め、各DJの入りで毎回伝える'},
+{c:2,n:'ドリンクをこぼした',sev:1,u:'DJM-A9',
+ s:['<b>即座に電源を落とす。通電したままが最悪。</b>','ケーブルを外す。','予備ミキサーに差し替える。','<b>濡れた機材は完全に乾くまで使わない。</b>3日あるので焦らない。'],
+ p:'ブースに蓋なしの飲み物を置かせない。置き場を外に作る'},
+{c:2,n:'ミキサーが落ちた・全体無音',sev:1,u:'DJM-A9',
+ s:['電源ケーブルとタップを確認。','ブレーカーを確認。','復旧しなければ<b>予備ミキサーに差し替え</b>（CDJ→ミキサー→アンプ）。目標5分。','<b>「復旧見込み◯分」を必ず全員とフロアに告知する。</b>無言で作業しない。'],
+ p:'予備ミキサーは配線済み・電源近くに置いておく'},
+// ---- マイク ----
+{c:3,n:'ハウリング',sev:1,u:'MIC-1',
+ s:['<b>マイクのフェーダーを下げる。マスターではない。</b>','マイクをスピーカーの正面から外す。','MIC EQ の HIGH / MID を下げる。','収まらなければマイクを一旦OFFにして仕切り直す。'],
+ p:'マイクを使うアクトは事前に立ち位置とレベルを決めておく'},
+{c:3,n:'マイクの音が出ない・小さい',sev:2,u:'MIC-1',
+ s:['MIC LEVEL と ON/OFF を確認。','ケーブルの刺さりを確認。','コンデンサマイクならファンタム電源の入切を確認。','ワイヤレスなら電池と受信機のレベルを確認。'],
+ p:'マイクを使うアクトの直前に必ず音出しテストをする'},
+{c:3,n:'ミュート戻し忘れ（生音が乗った）',sev:2,u:'MIC-1',
+ s:['即MIC LEVELをゼロに。','<b>使用後は必ずOFFに戻す</b>をブースのルールにする。','ブース内の会話がPAに乗る。深夜ほど事故になる。'],
+ p:'マイク使用後のOFF確認をSMの手順に組み込む'},
+{c:3,n:'ワイヤレスの電池切れ・電波飛び',sev:2,u:'MIC-1',
+ s:['予備電池に即交換。','受信機の電波レベルを確認。飛ぶなら有線に切替。','アクトごとに電池交換する運用に変える。'],
+ p:'アクト単位で電池交換。予備電池をブースに常備する'},
+// ---- 電源/環境 ----
+{c:4,n:'ブレーカー落ち・電圧降下',sev:1,u:'電源/ブレーカー',
+ s:['<b>直前に何を増やしたかを特定する</b>（照明・調理・暖房の追加が原因のことが多い）。','原因の機器を外してから復電。','<b>アンプ類を同時に立ち上げない。</b>突入電流で再度落ちる。順番に。'],
+ p:'系統ごとの容量と、何がどの系統かを紙にしてブースに貼る'},
+{c:4,n:'結露（日の出前後）',sev:2,u:'CDJ-1',
+ s:['乾いた布で機材を拭く。','送風して湿気を飛ばす。','<b>3日間、毎朝必ず起きる。</b>定例作業として先回りする。'],
+ p:'日の出2時間前のブース養生・送風を毎日の定例作業にする'},
+{c:4,n:'雨・機材の養生',sev:1,u:'電源/ブレーカー',
+ s:['卓・電源・アンプの養生を最優先。','ケーブルの水没箇所に1人専任を置く。','ステージ床の滑りを即告知。','一度濡れた機材を乾かす時間をサイレントタイムに確保する。'],
+ p:'養生資材の置き場所を全員が知っている状態にする'},
+{c:4,n:'機材が熱い・ファンの埃',sev:3,u:'DJM-A9',
+ s:['触診して熱を確認。','風の通り道を作る。','サイレントタイムに埃とファンを清掃。'],
+ p:'サイレントタイムの整備項目に触診と清掃を固定で入れる'},
+// ---- 運用 ----
+{c:5,n:'次のDJが袖にいない',sev:2,u:'その他',
+ s:['転換開始10分前に呼べていなければ、その時点で遅延確定として扱う。','①<b>アーティスト本人に連絡</b> ②<b>プレイ中のDJに延長のお願い</b> ③<b>統括に報告</b>','到着見込みが転換開始+20分を超えるなら順番入替えを検討。'],
+ p:'転換開始10分前の呼び出しを、SMのチェック項目に固定する'},
+{c:5,n:'セットオーバー',sev:2,u:'その他',
+ s:['残り10分・5分・2分で袖から明示的にサイン。','超えるなら次アクトと組んで転換準備を先に始める。','強制フェードは上位判断。SM単独でやらない。'],
+ p:'入り時に終了時刻を口頭で確認し、サインの出し方を伝えておく'},
+{c:5,n:'音圧の上げ競争',sev:2,u:'DJM-A9',
+ s:['基準レベルを提示して戻してもらう。','TRIMで調整させる。マスターは触らせない。','次のDJの入りでも同じことを伝える。1人放置すると全員が上がる。'],
+ p:'開演前に基準レベルを決め、全DJに同じ言葉で伝える'},
+{c:5,n:'客がブースに入る・触る',sev:2,u:'その他',
+ s:['SMは対人対応に入らない。<b>警備に電話。</b>','機材の前に立って物理的に間に入る。','アーティストの安全が脅かされる場合のみ音を止める。'],
+ p:'ブース周りの導線と柵を初日に見直す'},
+
+// ---- ライブPC ----
+{c:6,n:'★本番前の接続チェック（毎回）',sev:3,u:'ライブPC',
+ s:['<b>前のアクトの演奏中に、空きCH（CH3/CH4）へ繋いでおく。</b>',
+    '<b>CH FADERは下げたまま、ヘッドホンのCUEで音を確認する。</b>マスターに出さずに検証できる。ここが一番大事。',
+    'TRIMでレベルを合わせる。',
+    'PC側を目視確認：<b>AC電源に接続 / スリープOFF / Wi-Fi・BluetoothOFF / 通知OFF</b>。',
+    'サンプルレートとバッファサイズを確認。バッファは<b>512以上</b>を推奨。'],
+ p:'ライブアクトの1つ前の枠で必ず実施する。本番で初めて音を出さない'},
+{c:6,n:'音が出ない（PC→ミキサーのLINE）',sev:1,u:'ライブPC',
+ s:['<b>該当CHの入力切替が LINE になっているか。</b>DIGITALやPHONOだと音は出ない。ここが最頻出。',
+    'CH FADER と TRIM を確認。',
+    '<b>PC側の出力デバイスがオーディオI/Fになっているか。</b>内蔵スピーカーに戻っていることが多い。',
+    'I/Fからの出力ケーブル（TRS/RCA）の刺さりを確認。',
+    'CUEで音が聞こえるならマスター側の問題。聞こえないならPC〜I/F側。'],
+ p:'ライブ用の入力CHを固定で決めて、開演前に紙で貼っておく'},
+{c:6,n:'音が出ない（PC→A9にUSB直結）',sev:1,u:'ライブPC',
+ s:['<b>A9のUSB端子はA/Bの2系統。切替ボタンの選択を確認。</b>',
+    '該当CHの入力切替を <b>USB</b> にする。',
+    'PC側の出力デバイスが DJM-A9 になっているか確認。',
+    '<b>サンプルレートをA9と合わせる。</b>不一致だと無音かノイズになる。',
+    '解決しなければオーディオI/F経由のLINE入力に切り替える。粘らない。'],
+ p:'USB直結のアクトは、入り時にどちらの系統(A/B)を使うか決めて共有する'},
+{c:6,n:'音がブチブチ切れる（ドロップアウト）',sev:1,u:'ライブPC',
+ s:['<b>バッファサイズを上げる（256→512→1024）。</b>演奏中でも変更できることが多い。まずこれ。',
+    'USBハブ経由なら<b>本体に直挿し</b>。',
+    'Wi-Fi と Bluetooth をOFF。',
+    '<b>ACアダプタに繋ぐ。</b>バッテリー駆動はCPUが省電力で動いて処理落ちする。',
+    '収まらなければ重いプラグインを外すかトラックをフリーズしてもらう。'],
+ p:'入り時にバッファ512以上・AC接続・Wi-Fi/BT OFF をチェック項目にする'},
+{c:6,n:'「ブーン」というノイズが乗る',sev:2,u:'オーディオI/F',
+ s:['<b>PCのACアダプタを抜いてバッテリーにしてみる。</b>消えたらグラウンドループ確定。',
+    '<b>DIボックスかアイソレーターを噛ませる。</b>これが正攻法。予備を必ず用意しておく。',
+    '電源をPA系と同じ系統から取る。別系統から取ると出やすい。',
+    'USB直結に変えると消えることがある。'],
+ p:'DIボックス／アイソレーターをブースに常備する。野外＋発電機では必ず起きる'},
+{c:6,n:'PCがフリーズ・落ちた（ライブ中）',sev:1,u:'ライブPC',
+ s:['<b>即CDJ側で音を繋ぐ。復帰を待たない。</b>ライブでも逃げ道はCDJ。',
+    '無音を作らない。3分を超える見込みならフロアへ告知。',
+    '復帰したらバッファを上げてから再開させる。',
+    '再開の可否と残り尺の扱いは<b>統括に上げる</b>。'],
+ p:'ライブ中もCDJ側に繋ぎ用の曲をロードしておく。空のまま置かない'},
+{c:6,n:'抜き差しで大きなノイズが出た',sev:2,u:'DJM-A9',
+ s:['<b>CH FADERを下げてから抜き差しする。</b>これだけで防げる。',
+    'マスターは触らない。',
+    'ライブの転換手順に固定で入れる。'],
+ p:'転換手順に「フェーダーを下げてから抜き差し」を明記してブースに貼る'},
+{c:6,n:'ライブの返しが聞こえない',sev:2,u:'モニター',
+ s:['<b>DJ同様、マスターを上げさせない。</b>BOOTHで解決する。',
+    'BOOTH LEVEL とモニタースピーカーの電源・ケーブルを確認。',
+    'PC側でモニター用の出力を別に出している場合、I/Fのルーティングを確認。',
+    '応急ならヘッドホンCUEで代替してもらう。'],
+ p:'ライブアクトには入り時に返しの出し方を必ず説明する'},
+{c:6,n:'MIDIコントローラーが認識されない',sev:2,u:'ライブPC',
+ s:['USBを挿し直す。ハブ経由なら直挿しに。',
+    'PC側で再スキャン。',
+    '<b>認識しないままで演奏できるかを本人に確認する。</b>できない場合は統括へ上げる。'],
+ p:'コントローラーを使うアクトは入り時に接続テストを必須にする'},
+{c:6,n:'結露・寒さでPCが不調',sev:2,u:'ライブPC',
+ s:['明け方は結露する。<b>PCを直接冷気に晒さない。</b>布やカバーで覆う。',
+    '<b>バッテリー駆動は寒さで急に落ちる。必ずAC接続。</b>',
+    '結露したら電源を入れずに拭いて温度をなじませる。'],
+ p:'明け方のライブはブースの養生と送風を先回りする'}
+];
+
+// ===== マニュアル =====
+var MANUAL = [
+{t:'この画面の使い方（1分で読める）', k:'使い方 操作 ボタン 初めて',
+ h:'<p class="big">覚えるのは3つだけ</p>'+
+   '<ol class="steps">'+
+   '<li><b>音が出た瞬間</b>に 緑のボタン「◯◯が始まった」を押す</li>'+
+   '<li><b>音が止まった瞬間</b>に 青のボタン「◯◯が終わった」を押す</li>'+
+   '<li>何か起きたら 下の「トラブル」→ 起きたことをタップ → 手順どおり動いて「記録する」</li></ol>'+
+   '<p class="hl">押した記録は全員の画面と統括に自動で届きます。<b>LINEで報告文を打つ必要はありません。</b></p>'+
+   '<p><b>押し間違えたら</b> ボタンの下の「さっきの記録を取り消す」。直近1件だけ戻せます。</p>'+
+   '<p><b>押し忘れたら</b> 黄色い「押し忘れていませんか？」が出ます。「予定どおりで埋めて次へ」で戻れます。</p>'+
+   '<p><b>ボタンが薄い（押せない）とき</b> 別の人が記録担当です。シフト交代で自分が担当になるときは、ボタン上の「交代するときはここをタップ」を押してください。</p>'+
+   '<p class="rd"><b>触らないでください：</b>設定の「統括のみ」の中（タイテ編集・記録の消去など）。</p>'+
+   '<p class="q">くわしい説明書（画面つき）→ <a href="guide.html" style="color:var(--live)">guide.html</a></p>'},
+
+{t:'統括に上げる5つ（これ以外は自分で決める）', k:'判断 権限 エスカレーション 押し 統括 報告 例外',
+ h:'<p class="hl">この現場は<b>例外報告型</b>です。<br>統括の許可を待つ運用ではありません。<b>下の5つ以外は、SMがその場で決めて動いてください。</b></p>'+
+   '<p class="big rd">上げるのはこの5つだけ</p>'+
+   '<ol class="steps">'+
+   '<li><b>30分を超える押し</b>（超えそうな見込みの段階で上げる）</li>'+
+   '<li><b>タイムテーブルの順番を変える</b>／セット尺をカットする必要が出た</li>'+
+   '<li><b>同じトラブルが2回目</b>（1回目は自分で処理して記録だけ）</li>'+
+   '<li><b>アーティストとの交渉ごと</b>（過大な要求・強制フェード・出演可否）</li>'+
+   '<li><b>客の退場・天候による中断</b>など、フェス全体に関わる判断</li>'+
+   '</ol>'+
+   '<p class="gr"><b>逆に、これは全部その場で決めてよい：</b>転換の短縮・延長、30分以内の押しの処理、予備機への差し替え、音出しの停止、救護・救急要請、雷による退避。</p>'+
+   '<p class="hl"><b>迷ったら止める。</b>安全に関わる「止める」判断で怒られることはありません。<br>ただし「再開する」判断だけは必ず統括に上げてください。</p>'},
+
+{t:'いちばん大事な原則', k:'原則 優先順位 判断',
+ h:'<p class="big">安全 &gt; 進行 &gt; 音質 &gt; 予定</p>'+
+   '<p>この順序を絶対に崩さない。人の安全に関わることは、タイムテーブルを犠牲にしてでも安全側に倒す。</p>'+
+   '<p class="hl">安全に関わる「止める」判断は、その場のSMが即決してよい。<br>ただし「再開する」判断は必ず上に上げる。</p>'},
+
+{t:'報告のしかた', k:'報告 定時 LINE 沈黙 異常なし',
+ h:'<p class="hl">統括は現場を見に行きません。<b>報告が上がってこない＝順調</b>と判断します。<br>だから<b>沈黙が一番危険</b>です。</p>'+
+   '<ul class="mt">'+
+   '<li><b>アクトの開始・終了を打刻するたび</b>に報告文が自動でコピーされます。LINEに貼るだけ</li>'+
+   '<li><b>トラブルを記録するたび</b>にも同じく自動でコピーされます</li>'+
+   '</ul>'+
+   '<p>統括側は最終受信からの経過時間を見ていて、30分途絶えると赤で警告が出ます。<b>沈黙は「順調」ではなく「確認が必要」として扱われます。</b></p>'+
+   '<p class="gr">報告の文面を考える必要はありません。打刻→貼る、それだけ。</p>'},
+
+{t:'転換の手順（標準60分）', k:'転換 チェンジオーバー 60分 オンステージ USB',
+ h:'<p class="hl">60分はバッファであって作業時間ではない。<br><b>転換開始から15分以内に機材設置を完了させる。</b></p>'+
+   '<ol class="steps">'+
+   '<li>転換開始時に<b>「オンステージ ◯時◯分」と時刻で宣言する</b>。「1時間後」とは言わない。</li>'+
+   '<li>前アクトの音声フェード確認 → 機材撤去 → ケーブル整理</li>'+
+   '<li>次アクトの機材設置 → 音出し確認 → ライン確認</li>'+
+   '<li>SMが「オンステージOK」を出す。<b>号令を出すのは一人だけ。</b></li>'+
+   '</ol>'+
+   '<p class="hl">USBの受け渡し事故を防ぐルール<br>'+
+   '<b>2台のうち片方は必ず前のDJの曲が鳴っている状態を保つ。</b><br>'+
+   '空いている方に次のUSBを挿し、ロードを目で確認してから前のUSBを抜く。</p>'+
+   '<p><b>次アクトは転換開始の10分前までに袖へ。</b>呼べていない時点で遅延確定として扱う。</p>'+
+   '<p class="hl">転換中に誰が音を出すかを、タイテと同じ精度で決めておく。<br>60分の無音はフロアを殺す。特に深夜〜明け方は一度離れた客は戻らない。</p>'},
+
+
+{t:'無線の話し方', k:'無線 通信 呼び出し 復唱',
+ h:'<ul class="mt">'+
+   '<li><b>呼び出し → 名乗り → 用件 → 復唱要求</b>の順<br><span class="q">「メインSM統括より、下手袖。どうぞ」</span></li>'+
+   '<li>1回の送信は<b>15秒以内</b></li>'+
+   '<li><b>数字は必ず2回</b>「10分、いちまるふん」</li>'+
+   '<li>了解は「了解」、終了は「以上」、危険は頭に「至急」</li>'+
+   '<li class="rd">曖昧語を使わない（ちょっと／そろそろ／たぶん／いい感じ）→ 時刻・分数・場所名に置き換える</li>'+
+   '<li>場所は固有名詞で。「あっち」ではなく「メイン下手袖」</li>'+
+   '<li class="rd">アーティスト名・トラブル客の特徴・怪我人の状態は無線に乗せない。「該当者」「1名」に置き換え、詳細は電話かLINE</li></ul>'},
+
+{t:'救護・保安', k:'救護 怪我 119 警備 喧嘩 客 侵入',
+ h:'<p class="hl">SMがやるのは4つだけ。<br>①電話で救護を呼ぶ ②導線を空ける ③音を下げるか判断 ④統括に共有<br><b>自分で処置しない。</b></p>'+
+   '<ul class="mt">'+
+   '<li class="rd"><b>意識がない／呼吸が怪しい／けいれん／頭を打った → 即119。</b>迷ったら呼ぶ</li>'+
+   '<li>酩酊・薬物の影響が疑われる人：詰問しない。安全な場所へ誘導して救護に引き渡す。判断せず記録だけ残す</li>'+
+   '<li>喧嘩・迷惑行為：<b>SMは介入しない。警備に電話。</b>ステージ運営が対人トラブルに入ると進行が全部止まる</li>'+
+   '<li>ステージ侵入：まず音を止めず、警備で挟む。アーティストの安全が脅かされる場合のみ音を止める</li>'+
+   '<li><b>日の出前後に一度、ステージ周辺で寝ている人の巡回を入れる。</b>低体温・踏まれ事故・脱水</li></ul>'},
+
+{t:'天候', k:'天候 雷 雨 風 結露 中断',
+ h:'<p class="rd"><b>雷：</b>最後の雷鳴・雷光から<b>30分</b>経過するまで再開しない。金属トラス・照明バトン・仮設電源から人を離す。<b>SM即決で止めてよい。</b></p>'+
+   '<p><b>雨：</b>卓・電源・アンプの養生が最優先。床の滑りを即告知。ケーブルの水没箇所に1人専任。一度濡れた機材を乾かす時間をサイレントタイムに確保する。</p>'+
+   '<p><b>強風：</b>バナー・メッシュ・テントは風速10m/s前後で撤去判断。吊り物は早めに降ろす。「まだ大丈夫」で倒れる。</p>'+
+   '<p><b>結露：</b>明け方に必ず出る。機材に養生をかけたまま朝を迎えない。日の出2時間前にブース養生と送風。</p>'+
+   '<p class="hl">中断を決めたら、<b>再開見込み時刻を必ずセットで告知する。</b>未定でも「◯時に再判断」と言う。</p>'},
+
+{t:'3日間の体制・シフト', k:'シフト 仮眠 交代 引き継ぎ 疲労 統括',
+ h:'<p class="hl">この現場で最も事故を生むのは、機材でも天候でもなく<b>疲労した判断</b>。</p>'+
+   '<p>連続覚醒17時間で、判断力は酒気帯び運転相当まで落ちる。統括が起きっぱなしで3日間持つことはない。</p>'+
+   '<ul class="mt">'+
+   '<li><b>必ず代理統括を指名し、時刻を切って権限を渡して寝る。</b>「なんとなく休む」ではなく「◯時〜◯時は◯◯が統括」と全員に宣言する</li>'+
+   '<li>最低2人体制・6時間交代を基本形にする</li>'+
+   '<li class="rd"><b>9/20の夜（2本目の入り）が一番危ない。</b>25時間走った直後に、また23時間が始まる。疲労のピークと「昨日うまくいった」慣れが同時に来る</li>'+
+   '<li class="rd"><b>この会期は仮眠の窓が構造的にありません。</b>MUSIC STOPの1時間では足りない。<b>誰がいつ寝るかを事前に紙で決める</b>。当日その場で決めようとすると誰も寝られない</li></ul>'+
+   '<p><b>交代時の引き継ぎ（口頭＋文字）</b></p>'+
+   '<div class="callbox">現在の押し：　　分<br>次アクト／オンステージ予定時刻：<br>未解決の懸案：<br>使用中・故障中の機材：<br>今夜のヒヤリハット：<br>上に上げて回答待ちの案件：</div>'},
+
+{t:'この会期の構造（必読）', k:'構造 49時間 連続 音無し MUSIC STOP リセット',
+ h:'<p class="big rd">49時間連続。音が止まるのは1回だけ</p>'+
+   '<table class="mt">'+
+   '<tr><td>開始</td><td>9/19 14:00</td></tr>'+
+   '<tr><td>1本目</td><td class="rd"><b>25時間連続</b>（→ 9/20 15:00）</td></tr>'+
+   '<tr><td>MUSIC STOP</td><td class="gr">9/20 15:00〜16:00　<b>1時間だけ</b></td></tr>'+
+   '<tr><td>2本目</td><td class="rd"><b>23時間連続</b>（→ 9/21 15:00）</td></tr>'+
+   '<tr><td>アクト数</td><td>47（うちライブ16・海外9）</td></tr></table>'+
+   '<p class="hl">これが意味すること：<br>'+
+   '<b>①押しを戻せるのは9/20 15:00の1回だけ。</b>それ以外は押したら押しっぱなしで最後まで積み上がる。<br>'+
+   '<b>②機材を止められるのも1時間だけ。</b>アンプもCDJも48時間ノンストップで回り続ける。<br>'+
+   '<b>③仮眠の窓が構造的にない。</b>シフトを組まないと物理的に破綻する。</p>'+
+   '<p class="rd"><b>だから「押しは転換で吸収する」を1本目のうちから徹底する。</b>後半に持ち越すと戻す場所がない。</p>'},
+
+{t:'演者からの呼び出しボタン', k:'呼び出し 演者 ドリンク 音 ボタン ブース 通知',
+ h:'<p>ブースに<b>呼び出し専用の端末を1台</b>置いています（別ファイル「演者用よびだしボタン」）。演者が演奏中に押せる大きなボタンが2つ。</p>'+
+   '<table class="mt"><tr><th>ボタン</th><th>意味</th></tr>'+
+   '<tr><td class="gr"><b>🥤 ドリンク</b><br>DRINK</td><td>飲み物が欲しい。急ぎではない</td></tr>'+
+   '<tr><td class="rd"><b>🔊 音のトラブル</b><br>SOUND ISSUE</td><td class="rd"><b>最優先。すぐブースへ。</b>モニター・音量・機材のどれか</td></tr></table>'+
+   '<p class="hl">押されると<b>画面全体が点滅します。</b>ドリンクは緑、音のトラブルは赤。<br>'+
+   '<b>爆音のブースでは音は聞こえません。だから光で知らせます。</b>端末はSMから見える向きに立てておくこと。</p>'+
+   '<p>対応したら端末の<b>「SM対応中 / DONE」</b>を押して消してください。押すまで点滅し続けます。対応までにかかった時間も記録されます。</p>'+
+   '<p class="rd"><b>赤（音のトラブル）が出たら、他の作業を止めてブースへ。</b>演者が演奏中に手を離してボタンを押したということは、自分では解決できない状態です。</p>'+
+   '<p class="gr">SMが近くにいない時は、演者かスタッフが<b>「LINEでも知らせる」</b>を押せばLINEに飛びます。</p>'+
+   '<p class="note">ボタンは日本語と英語を併記しています。海外アクトが9組いるため。</p>'},
+
+{t:'ライブPCの繋ぎ方と事前チェック', k:'ライブ PC Ableton 接続 CUE バッファ ノイズ DI 事前',
+ h:'<p>ライブアクトはPCをCDJかミキサーに繋いで演奏します。繋ぎ方は2通りで、切り分けが変わります。</p>'+
+   '<table class="mt"><tr><th>繋ぎ方</th><th>最初に見るところ</th></tr>'+
+   '<tr><td>オーディオI/F → ミキサーのLINE入力</td><td class="rd">CHの入力切替が<b>LINE</b>か</td></tr>'+
+   '<tr><td>PC → A9にUSB直結</td><td class="rd">USBの<b>A/B切替</b>とCHの入力切替が<b>USB</b>か</td></tr></table>'+
+   '<p class="big gr">本番で初めて音を出さない</p>'+
+   '<p class="hl">これがライブPC対応の全てです。手順：<br>'+
+   '<b>①前のアクトの演奏中に、空きCH（CH3/CH4）へ繋ぐ<br>'+
+   '②CH FADERは下げたまま、ヘッドホンのCUEで音を確認する</b><br>'+
+   'CUEはマスターに出ないので、<b>フロアに音を出さずに検証できます。</b>ここを使わない手はない。</p>'+
+   '<p>③TRIMでレベルを合わせる<br>'+
+   '④PC側を目視：<b>AC接続 / スリープOFF / Wi-Fi・BT OFF / 通知OFF / バッファ512以上</b></p>'+
+   '<p class="rd"><b>特に多い3つ</b><br>'+
+   '・音が出ない → <b>CHの入力切替がLINEになっていない</b><br>'+
+   '・ブチブチ切れる → <b>バッファが小さい／バッテリー駆動</b><br>'+
+   '・ブーンと鳴る → <b>グラウンドループ。DIかアイソレーターを噛ませる</b></p>'+
+   '<p class="hl">ライブ中にPCが落ちたら、<b>復帰を待たずCDJで繋ぐ。</b>ライブでも逃げ道はCDJです。<br>そのためにCDJ側は空にせず、常に繋ぎ用の曲をロードしておく。</p>'},
+
+{t:'ライブ転換の要注意3箇所', k:'ライブ live 転換 連続 危険',
+ h:'<p>枠は1時間刻みで、<b>転換枠は別に取られていません。</b>DJ→DJはシームレスに繋げますが、ライブは機材の設営・撤収が要ります。</p>'+
+   '<p class="rd"><b>ライブ→ライブが連続する3箇所が、この会期で最も壊れやすい場所です。</b></p>'+
+   '<table class="mt"><tr><th>時刻</th><th>連続するライブ</th></tr>'+
+   '<tr><td>9/20 13:00→14:00</td><td class="rd">MIROK → Okapi 🇮🇹</td></tr>'+
+   '<tr><td>9/20 17:00→18:00</td><td class="rd">Migdolor 🇮🇱 → Nomolos 🇮🇱</td></tr>'+
+   '<tr><td>9/21 12:30→13:30</td><td class="rd">Spectra Sonics → Aven7 🇧🇷（最終盤）</td></tr></table>'+
+   '<p class="hl">対策：<b>次のライブの機材を、前のライブが演奏中に袖で組み上げておく。</b><br>ステージ上で撤収と設営を直列にやると必ず押す。並列にする以外に方法がない。</p>'+
+   '<p><b>ライブアクトの前は、DJ枠のうちに袖で音出しチェックまで済ませる。</b>ステージに上げてから初めて音を出すのは避ける。</p>'+
+   '<p class="gr">ライブは全16アクト。◆マークで一覧に表示されます。</p>'},
+
+{t:'MUSIC STOPの1時間にやること', k:'サイレント MUSIC STOP 整備 メンテ 仮眠 点検',
+ h:'<p class="rd">9/20 15:00〜16:00。<b>会期中これ1回きり。</b>48時間分の整備をここに詰める。</p>'+
+   '<ol class="steps">'+
+   '<li><b>アンプ・スピーカーの熱チェック（触診）</b>、ラックのファンと埃 ← 25時間連続稼働の直後</li>'+
+   '<li>電源系の点検、発電機の燃料補給</li>'+
+   '<li>CDJ・ミキサーの清掃（砂・埃・結露の跡）</li>'+
+   '<li>ケーブルの巻き直し・養生の張り直し</li>'+
+   '<li>ステージ周りのゴミ・危険物の除去</li>'+
+   '<li><b>次のライブ（17:00 Migdolor / 18:00 Nomolos）の機材確認</b></li></ol>'+
+   '<p class="rd"><b>ここを押さないことが最優先。</b>MUSIC STOPの開始が押すと、整備も仮眠も削られて残り23時間に跳ね返る。</p>'+
+   '<p class="hl">仮眠はここでは足りない。<b>シフトで別に確保する。</b></p>'},
+
+{t:'統括自身が出演する時間', k:'YUKI.T 出演 代理 統括 引き継ぎ',
+ h:'<p class="rd"><b>9/20 21:00 YUKI.T</b> — 統括の一人が出演します。</p>'+
+   '<p>この前後は統括が機能しません。準備とアフターを含めて<b>20:00〜22:30は代理統括を立てる</b>前提で組んでください。</p>'+
+   '<p class="hl">「なんとなく誰かが見ている」が一番危ない。<br><b>「20:00〜22:30は◯◯が統括」と時刻を切って全員に宣言する。</b></p>'+
+   '<p>この枠の前後にはライブが入っています（20:00 SUZI live / 22:00 VARANOID 🇫🇷 live）。<b>代理統括にライブ転換が2本乗る</b>ので、経験のある人を置いてください。</p>'},
+
+{t:'音質の管理', k:'音質 音量 ゲイン クリップ 低域 モニター',
+ h:'<p class="hl">規制もカーフューもない＝<b>止める人がいない</b>。品質が落ちても誰も教えてくれないので、SMが管理する。</p>'+
+   '<ul class="mt">'+
+   '<li>3日連続で効いてくるのは<b>熱と電源</b>。アンプの熱ダレ、ドライバの疲弊、電圧降下</li>'+
+   '<li class="rd"><b>クリップさせない。</b>リミッター設定を現場で勝手に触らせない</li>'+
+   '<li><b>「前の人より大きく」は必ず起きる。</b>基準レベルをSMが決め、各DJの入りで同じ言葉で伝える。1人放置すると全員が上がる</li>'+
+   '<li>モニターが聞こえないDJは<b>ほぼ必ずマスターを上げようとする</b>。これは音圧事故の入口。BOOTHで解決させ、マスターは触らせない</li>'+
+   '<li>深夜〜明け方は<b>低域が遠くまで飛ぶ</b>。同じ出力でも聞こえ方が変わる。苦情がなくても朝方はサブを管理する</li>'+
+   '<li>夜明け以降は音圧より解像度。客も自分も耳が疲れている。上げるのではなく整える</li>'+
+   '<li>発電機系は<b>アンプ類を同時に立ち上げない</b>。突入電流で落ちる</li></ul>'},
+
+{t:'アーティスト対応', k:'DJ アーティスト 遅刻 セットオーバー 要求 USB',
+ h:'<ul class="mt">'+
+   '<li><b>来ない・遅れる：</b>プレイ開始20分前にステージ裏に来ていなければ動く。<br>①<b>アーティスト本人に連絡</b><br>②<b>プレイ中のDJに延長のお願い</b><br>③<b>統括に報告</b><br>順番待ちしない。</li>'+
+   '<li><b>セットオーバー：</b>残り10分・5分・2分で袖から明示的にサイン。超えるなら次アクトと組んで転換準備を先に始める。強制フェードは上位判断</li>'+
+   '<li class="rd"><b>音量・機材の要求が過大：</b>その場で拒否せず「確認します」で引き取り、統括に上げる。SMがその場でNOを言うと関係が壊れる</li>'+
+   '<li><b>持ち込みUSB・PC：</b>予備機で先に読み込み・接続テスト。本番卓で初めて挿すのは厳禁。初日にテスト済み機材リストを作って共有する</li></ul>'},
+
+
+{t:'開演前チェック', k:'開演前 チェック 準備 事前',
+ h:'<ul class="mt chk">'+
+   '<li>全員が<b>同じ版数のタイムテーブル</b>を持っているか（版数違いが最大の事故要因）</li>'+
+   '<li>無線チャンネル・呼出名の統一、予備電池の配布</li>'+
+   '<li><b>00_救護 / 00_警備 / 00_制作 / 00_電源</b> を全員のスマホに登録済みか</li>'+
+   '<li>電波が弱い場所を把握したか</li>'+
+   '<li>全CHの音出し確認（CDJ1台ずつ）</li>'+
+   '<li>予備CDJ・予備ミキサーを配線して電源近くに置いたか</li>'+
+   '<li>XLR・LAN・予備ヘッドホン・予備電池をブースに常備したか</li>'+
+   '<li><b>DIボックス／アイソレーター</b>を用意したか（ライブPCのノイズ対策。野外＋発電機では必ず要る）</li>'+
+   '<li><b>変換ケーブル</b>（TRS-RCA / 3.5mm-RCA / USB-C-USB-B）を揃えたか</li>'+
+   '<li>ライブ用の入力CHを固定で決めて紙で貼ったか</li>'+
+   '<li>基準レベルを決めたか</li>'+
+   '<li>転換中のBGM担当を全枠に割り当てたか</li>'+
+   '<li>ブースの飲み物置き場を外に作ったか</li></ul>'},
+
+{t:'終演後にやること', k:'終演 撤収 振り返り 翌日',
+ h:'<ul class="mt chk">'+
+   '<li>押し実績・トラブル・機材損耗・ヒヤリハットを回収</li>'+
+   '<li>「日報コピー」でその日の記録をまとめて共有</li>'+
+   '<li><b>3件以上出ている機材個体を、翌日の前に交換する</b></li>'+
+   '<li>濡れた・熱を持った機材の状態を確認</li>'+
+   '<li>翌日の修正点を1枚にまとめて全員へ</li></ul>'+
+   '<p class="hl">記録して終わりにしない。<b>その日のうちに読み返して翌日の運用に反映する。</b></p>'}
+];
+
+// ===== state =====
+var S = {stages:[], logs:[], cur:0, mode:'lead', reports:[], lastRx:null, startDate:'2026-09-19',
+  sync:{url:'',key:'',dev:'',last:0,outbox:[],on:true,lastOk:null}, roleDev:'', feed:[],
+  cfg:{change:15, warn:15, esc:30, silence:30}};
+var APP_VERSION = 'v12';
+var KEY = 'sm-dash-v4';
+
+function save(){ try{localStorage.setItem(KEY, JSON.stringify(S));}catch(e){} }
+function load(){
+  try{ var r = localStorage.getItem(KEY); if(r){ var o=JSON.parse(r); S = Object.assign(S,o); } }catch(e){}
+  if(!S.cfg) S.cfg = {};
+  if(!S.startDate) S.startDate = '2026-09-19';
+  if(S.cfg.change==null) S.cfg.change = 15;
+  if(S.cfg.warn==null)   S.cfg.warn   = 15;
+  if(S.cfg.esc==null)    S.cfg.esc    = 30;
+  if(S.cfg.silence==null)S.cfg.silence= 30;
+  if(!S.mode) S.mode = 'lead';
+  if(!S.reports) S.reports = [];
+  if(!S.theme) S.theme = 'night';
+  if(!S.sync) S.sync = {url:'',key:'',dev:'',last:0,outbox:[],on:true,lastOk:null};
+  if(!S.sync.outbox) S.sync.outbox = [];
+  if(S.roleDev===undefined) S.roleDev='';
+  if(!S.feed) S.feed=[];
+  if(!S.deletedLogs) S.deletedLogs=[];
+  if(S.sync.lastErr===undefined) S.sync.lastErr='';
+}
+
+// ===== time helpers (minutes from 00:00, 深夜は +1440) =====
+function parseT(s){
+  var m = String(s).trim().match(/^(\d{1,2}):(\d{2})$/);
+  if(!m) return null;
+  return parseInt(m[1],10)*60 + parseInt(m[2],10);
+}
+function fmt(mins){
+  if(mins===null||mins===undefined||isNaN(mins)) return '--:--';
+  var m = ((mins % 1440) + 1440) % 1440;
+  return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
+}
+// 会期の初日00:00を基準にした「通し分」。49時間連続でも正しく計算するために日付を見る。
+function nowMin(){
+  var d = new Date();
+  var n = d.getHours()*60 + d.getMinutes();
+  if(S.startDate){
+    var p = S.startDate.split('-');
+    var s = new Date(+p[0], (+p[1])-1, +p[2]);
+    var t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    var days = Math.round((t - s)/86400000);
+    if(days >= 0 && days <= 6) return days*1440 + n;
+  }
+  if(n < 360) n += 1440;   // 初日未設定時のフォールバック
+  return n;
+}
+// 本番前日かどうか（今日のローカル日付 < S.startDate）。nowMin()と同じ日付計算。
+function preEvent(){
+  if(!S.startDate) return false;
+  var d = new Date();
+  var p = S.startDate.split('-');
+  var s = new Date(+p[0], (+p[1])-1, +p[2]);
+  var t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  var days = Math.round((t - s)/86400000);
+  return days < 0;
+}
+function fmtD(mins){
+  if(mins===null||mins===undefined||isNaN(mins)) return '--:--';
+  var day = Math.floor(mins/1440);
+  var hm = fmt(mins);
+  if(!S.startDate || day<=0) return hm;
+  var p = S.startDate.split('-');
+  var s = new Date(+p[0], (+p[1])-1, +p[2]); s.setDate(s.getDate()+day);
+  return (s.getMonth()+1)+'/'+s.getDate()+' '+hm;
+}
+function sgn(n){ return (n>0?'+':'') + n; }
+
+// ===== parse timetable =====
+function parseTT(txt){
+  var stages = [], cur = null;
+  txt.split(/\n/).forEach(function(raw){
+    var line = raw.trim();
+    if(!line) return;
+    if(line.charAt(0)==='#'){ cur = {name: line.slice(1).trim() || 'ステージ', acts:[]}; stages.push(cur); return; }
+    if(!cur){ cur = {name:'DAY1', acts:[]}; stages.push(cur); }
+    var anchor = false;
+    if(line.charAt(0)==='!'){ anchor = true; line = line.slice(1).trim(); }
+    var m = line.match(/^(\d{1,2}:\d{2})\s*(?:[-–~〜]\s*(\d{1,2}:\d{2}))?\s+(.+)$/);
+    if(!m) return;
+    cur.acts.push({start:parseT(m[1]), end:m[2]?parseT(m[2]):null, name:m[3].trim(), aStart:null, aEnd:null, anchor:anchor});
+  });
+  if(!stages.length) return null;
+  // 深夜跨ぎ正規化 + 終了時刻の補完
+  stages.forEach(function(st){
+    var off = 0, prev = -1;
+    st.acts.forEach(function(a){
+      if(a.start < prev) off += 1440;
+      a.start += off; prev = a.start - off;
+      if(a.end !== null){ a.end += off; if(a.end <= a.start) a.end += 1440; }
+    });
+    st.acts.sort(function(x,y){return x.start-y.start;});
+    st.acts.forEach(function(a,i){
+      if(a.end === null) a.end = (i+1 < st.acts.length) ? st.acts[i+1].start : a.start + 60;
+    });
+  });
+  return stages;
+}
+function loadTT(src){
+  var txt = (typeof src === 'string') ? src : document.getElementById('ttInput').value;
+  var stages = parseTT(txt);
+  if(!stages){ toast('読み取れませんでした。形式を確認してください'); return; }
+  S.stages = stages; S.cur = 0;
+  save(); render(); view('run');
+  toast(stages.reduce(function(s,x){return s+x.acts.length;},0) + 'アクト 読み込み完了');
+}
+
+var REAL_TT =
+"#メインステージ 9/19-21\n"+
+"14:00 KANDA SAORI with AKIRA IKEDA\n"+
+"15:00 YØSHIKI\n"+
+"16:00 Tom monkey\n"+
+"17:00 SHIVA\n"+
+"18:00 TSUNE\n"+
+"19:00 SIONA 🇰🇷\n"+
+"20:00 Poo-chii\n"+
+"21:00 PiERO\n"+
+"22:00 ◆Groove Box live\n"+
+"23:00 KAZYA\n"+
+"00:00 WATARU\n"+
+"01:00 ◆Xipe totecs live\n"+
+"02:00 KANKEEY\n"+
+"03:00 ◆RGB live\n"+
+"04:00 Suma 🇹🇼\n"+
+"05:00 YANMAH\n"+
+"06:00 ◆Revival.Revival live\n"+
+"07:00 SAEKI\n"+
+"08:00 AYAKA\n"+
+"09:00 PINKY\n"+
+"10:00 YUYA\n"+
+"11:00 YAMATO\n"+
+"12:00 PEPE\n"+
+"13:00 ◆MIROK live ★次もlive\n"+
+"14:00 ◆Okapi 🇮🇹 live\n"+
+"!15:00-16:00 MUSIC STOP ← 唯一の音無し\n"+
+"16:00 RYOKAN\n"+
+"17:00 ◆Migdolor 🇮🇱 live ★次もlive\n"+
+"18:00 ◆Nomolos 🇮🇱 live\n"+
+"19:00 C!AO\n"+
+"20:00 ◆SUZI live\n"+
+"21:00 🔥YUKI.T\n"+
+"22:00 ◆VARANOID 🇫🇷 live\n"+
+"23:00 HISA\n"+
+"00:00 BuzZ\n"+
+"01:00-02:30 ◆Fungas Funk 🇪🇸 live\n"+
+"02:30 FUMI\n"+
+"03:30 ◆KATAK 🇭🇰 live\n"+
+"04:30 MI-BOU\n"+
+"05:30 YUKI\n"+
+"06:30 DAICHI\n"+
+"07:30 ◆KAIZAN live\n"+
+"08:30 ANNY\n"+
+"09:30 MARIHO\n"+
+"10:30 ◆SLUM live\n"+
+"11:30 HATTA\n"+
+"12:30 ◆Spectra Sonics live ★次もlive\n"+
+"13:30-15:00 ◆Aven7 🇧🇷 live";
+// 本番タイテを1タップで反映（貼り付け不要）
+function loadDemo(){
+  document.getElementById('ttInput').value = REAL_TT;
+  loadTT(REAL_TT);
+}
+// 打刻・ログを消して本番タイテを入れ直す
+function reloadReal(){
+  if(!confirm('打刻とトラブルログを消して、本番タイムテーブルを入れ直します。よろしいですか？')) return;
+  S.logs = []; S.reports = []; S.lastRx = null;
+  loadTT(REAL_TT);
+  toast('本番タイムテーブルを入れ直しました');
+}
+
+// ===== delay engine =====
+// idx 番目のアクトが背負う押し。
+// MUSIC STOP(anchor) は「枠の長さ分だけ押しを吸収する」。
+//   ・入ってくる押しが枠の長さ以内 → 以降 0 にリセット
+//   ・枠の長さを超える押し → 超えた分だけ次に持ち越す（60分の枠で+70なら +10）
+//   ・anchor の終了が打刻されていれば、その実績（実終了−予定終了）をそのまま使う
+function anchorCarry(a, dIn){
+  if(a.aEnd !== null) return a.aEnd - a.end;                 // 実績優先
+  var len = a.end - a.start;
+  var dStart = (a.aStart !== null) ? (a.aStart - a.start) : dIn;
+  return Math.max(0, dStart - len);
+}
+function delayAt(st, idx){
+  var d = 0;
+  for(var i=0;i<idx && i<st.acts.length;i++){
+    var a = st.acts[i];
+    if(a.anchor){ d = anchorCarry(a, d); continue; }   // サイレントタイムで吸収
+    if(a.aEnd !== null) d = a.aEnd - a.end;
+    else if(a.aStart !== null) d = a.aStart - a.start;
+  }
+  return d;
+}
+function stageDelay(st){ return delayAt(st, st.acts.length); }
+// 「いま」の押し。サイレントタイム以降のリセットに引きずられないよう、進行中アクト基準で見る。
+function curDelay(st){
+  var i = activeIdx(st);
+  return delayAt(st, i < 0 ? st.acts.length : i + (st.acts[i].aStart !== null ? 1 : 0));
+}
+function predict(st, ai){
+  var a = st.acts[ai];
+  var d = delayAt(st, ai);
+  var s = (a.aStart!==null? a.aStart : a.start + d);
+  // anchor の終了予定は「押しを吸収した後」の時刻（枠内なら予定どおり 16:00）
+  var e = (a.aEnd!==null? a.aEnd : (a.anchor ? a.end + anchorCarry(a, d) : a.end + d));
+  return {s:s, e:e, shifted: (a.aStart===null && d!==0), d:d};
+}
+function curStage(){ return S.stages[S.cur]; }
+// 現在対象アクト: 未終了の最初のアクト
+function activeIdx(st){
+  for(var i=0;i<st.acts.length;i++){ if(st.acts[i].aEnd === null) return i; }
+  return -1;
+}
+// 次のサイレントタイムまでの押し（そこでリセットされる）
+function nextAnchor(st){
+  var i = activeIdx(st); if(i<0) return -1;
+  for(var k=i;k<st.acts.length;k++){ if(st.acts[k].anchor) return k; }
+  return -1;
+}
+function actState(st, a, i){
+  if(a.aEnd !== null) return 'done';
+  if(a.aStart !== null) return 'live';
+  return (i === activeIdx(st)) ? 'next' : 'wait';
+}
+
+// ===== stamping =====
+function stampStart(){
+  var st = curStage(); if(!st){ toast('タイムテーブル未設定'); return; }
+  if(!isStamper() && !askTakeRole()) return;
+  var i = activeIdx(st); if(i<0){ toast('全アクト終了済み'); return; }
+  var a = st.acts[i];
+  if(a.aStart !== null){ toast('すでに開始打刻済み'); return; }
+  a.aStart = nowMin();
+  var dd = a.aStart - a.start;
+  pushEvent('stamp',{i:i,f:'aStart',v:a.aStart,name:a.name},
+    a.name+' 開始 '+fmtD(a.aStart)+'（'+(dd===0?'定刻':sgn(dd)+'分')+'）');
+  var d = dd;
+  save(); render();
+  toast('記録しました：'+a.name+' 開始 '+fmt(a.aStart)+(preEvent()?'':'（'+(d===0?'定刻':sgn(d)+'分')+'）'));
+}
+function stampEnd(){
+  var st = curStage(); if(!st){ toast('タイムテーブル未設定'); return; }
+  if(!isStamper() && !askTakeRole()) return;
+  var i = activeIdx(st); if(i<0){ toast('全アクト終了済み'); return; }
+  var a = st.acts[i];
+  if(a.aStart === null){ toast('先に開始を打刻してください'); return; }
+  a.aEnd = nowMin();
+  var de = a.aEnd - a.end;
+  pushEvent('stamp',{i:i,f:'aEnd',v:a.aEnd,name:a.name},
+    a.name+' 終了 '+fmtD(a.aEnd)+'（'+(de===0?'定刻':sgn(de)+'分')+'）');
+  save(); render();
+  toast('記録しました：'+a.name+' 終了 '+fmt(a.aEnd)+(preEvent()?'':'（'+(de===0?'定刻':sgn(de)+'分')+'）'));
+}
+// 直近に打刻したアクト（取消できるのはここだけ。古い枠を戻すと以降の押しが全部狂うため）
+function lastStampedIdx(st){
+  for(var i=st.acts.length-1;i>=0;i--){ if(st.acts[i].aStart!==null) return i; }
+  return -1;
+}
+function undo(si, ai, which){
+  var st = S.stages[si]; if(!st) return;
+  if(!isStamper() && !askTakeRole()) return;
+  if(ai !== lastStampedIdx(st)){ toast('取消できるのは直近の打刻だけです'); return; }
+  var a = st.acts[ai];
+  var ok=false;
+  try{ ok = confirm(a.name+' の'+(which==='end'?'終了':'開始')+'打刻を取り消します。\n全端末に反映されます。よろしいですか？'); }catch(e){ ok=false; }
+  if(!ok) return;
+  if(which==='end') a.aEnd = null; else { a.aEnd=null; a.aStart=null; }
+  pushEvent('stamp',{i:ai,f:'aEnd',v:null,name:a.name}, a.name+' 終了の打刻を取消');
+  if(which!=='end') pushEvent('stamp',{i:ai,f:'aStart',v:null,name:a.name}, a.name+' 開始の打刻を取消');
+  save(); render();
+}
+// いまカード直下の「さっきの記録を取り消す」
+function undoLastClick(){
+  var st = curStage(); if(!st) return;
+  var idx = lastStampedIdx(st); if(idx<0) return;
+  var a = st.acts[idx];
+  undo(S.cur, idx, a.aEnd!==null?'end':'start');
+}
+// 打刻し忘れの救済：予定どおり（＝いまの押しをそのまま背負った時刻）で埋めて次に進む
+function fillAsScheduled(si, ai){
+  var st = S.stages[si]; if(!st) return;
+  if(!isStamper() && !askTakeRole()) return;
+  if(ai !== activeIdx(st)){ toast('埋められるのは「次」の枠だけです'); return; }
+  var a = st.acts[ai], p = predict(st, ai);
+  var ok=false;
+  try{ ok = confirm(a.name+' を「予定どおり」として記録します。\n開始 '+fmtD(p.s)+' / 終了 '+fmtD(p.e)+'\n（押し '+(p.d===0?'0':sgn(p.d))+'分のまま次の枠へ進みます）\n\nよろしいですか？'); }catch(e){ ok=false; }
+  if(!ok) return;
+  a.aStart = p.s; a.aEnd = p.e;
+  pushEvent('stamp',{i:ai,f:'aStart',v:a.aStart,name:a.name}, a.name+' 開始（打刻忘れ→予定どおりで補完）');
+  pushEvent('stamp',{i:ai,f:'aEnd',v:a.aEnd,name:a.name}, a.name+' 終了（打刻忘れ→予定どおりで補完）');
+  save(); render();
+  toast(a.name+' を予定どおりで埋めました');
+}
+
+// ===== render =====
+function render(){
+  // tabs（区分が1つだけなら出さない＝スマホの縦を稼ぐ）
+  var t = document.getElementById('tabs'); t.innerHTML='';
+  t.classList.toggle('hide', S.stages.length < 2);
+  S.stages.forEach(function(st,i){
+    var d = curDelay(st);
+    var b = document.createElement('button');
+    b.className = 'tab' + (i===S.cur?' on':'');
+    b.textContent = st.name + (d!==0? '  '+sgn(d) : '');
+    b.onclick = function(){ S.cur=i; save(); render(); view('run'); };
+    t.appendChild(b);
+  });
+
+  // header
+  var st = curStage();
+  var badge = document.getElementById('delayBadge');
+  var fin = document.getElementById('finBadge');
+  if(st){
+    var d = curDelay(st);
+    if(preEvent()){
+      badge.textContent = '🧪 本番前';
+      badge.className = 'badge wr';
+    } else {
+      badge.textContent = '押し ' + (d===0?'0分':sgn(d)+'分');
+      badge.className = 'badge ' + (Math.abs(d) < S.cfg.warn ? 'ok' : (Math.abs(d) < S.cfg.esc ? 'wr' : 'bd'));
+    }
+    var li = st.acts.length-1, last = st.acts[li];
+    var an = nextAnchor(st);
+    if(preEvent() || S.mode==='sm'){
+      fin.classList.add('hide');
+    } else if(last && d!==0){
+      fin.classList.remove('hide');
+      fin.className = 'badge ' + (Math.abs(d)<S.cfg.esc?'wr':'bd');
+      if(an >= 0){
+        var carry = anchorCarry(st.acts[an], delayAt(st,an));
+        fin.textContent = 'MUSIC STOP 開始 ' + fmtD(predict(st,an).s) + '（予定 ' + fmtD(st.acts[an].start) + '）→ ' +
+          (carry>0 ? '枠で吸収しきれず 以降 '+sgn(carry)+'分 持ち越し' : '以降リセット');
+      } else {
+        fin.textContent = '最終アクト終了 ' + fmtD(predict(st,li).e) + '（予定 ' + fmtD(last.end) + '）';
+      }
+    } else fin.classList.add('hide');
+    var i = activeIdx(st);
+    document.getElementById('statusLine').textContent =
+      i<0 ? st.name + ' — 全アクト終了' :
+      (st.acts[i].aStart!==null ? '本番中: ' : '次: ') + st.acts[i].name;
+  } else {
+    badge.textContent='押し 0分'; badge.className='badge ok'; fin.classList.add('hide');
+  }
+  updatePreCard();
+
+  // stage grid (進行) — 前2・いま・次5だけのコンパクト表示
+  var g = document.getElementById('stageGrid'); g.innerHTML='';
+  if(st) g.appendChild(stageCard(st, S.cur, true, true));
+
+  // all grid（全件）
+  var ag = document.getElementById('allGrid'); ag.innerHTML='';
+  S.stages.forEach(function(x,i){ ag.appendChild(stageCard(x,i,false)); });
+
+  renderRole();
+  renderMainBtn();
+  updateForgotCard();
+  renderPresets();
+  renderLogs();
+  renderReports();
+  renderRx();
+  tick();
+}
+
+// ===== いまカードのボタン（1つだけ表示） =====
+function renderMainBtn(){
+  var s = document.getElementById('btnStart'), e = document.getElementById('btnEnd'),
+      u = document.getElementById('undoLast'), note = document.getElementById('stampNote');
+  var st = curStage();
+  if(!st){ s.classList.add('hide'); e.classList.add('hide'); u.classList.add('hide'); return; }
+  var i = activeIdx(st);
+  if(i<0){
+    s.classList.add('hide'); e.classList.add('hide');
+  } else {
+    var a = st.acts[i];
+    if(a.aStart===null){
+      s.textContent = a.anchor ? '▶ MUSIC STOP に入った' : '▶ '+a.name+' が始まった';
+      s.classList.remove('hide'); e.classList.add('hide');
+      if(note) note.textContent = '音が出た瞬間に押してください（打刻）';
+    } else {
+      e.textContent = a.anchor ? '■ MUSIC STOP 終了（音出し再開）' : '■ '+a.name+' が終わった';
+      e.classList.remove('hide'); s.classList.add('hide');
+      if(note) note.textContent = '音が止まった瞬間に押してください（打刻）';
+    }
+  }
+  if(u) u.classList.toggle('hide', lastStampedIdx(st) < 0);
+}
+// ===== 本番前カード =====
+function updatePreCard(){
+  var card = document.getElementById('preCard');
+  if(card) card.classList.toggle('hide', !preEvent());
+}
+// ===== 打刻忘れバナー =====
+function updateForgotCard(){
+  var card = document.getElementById('forgotCard');
+  var st = curStage();
+  var show = false, i = -1, p = null;
+  if(st && !preEvent()){
+    i = activeIdx(st);
+    if(i>=0 && st.acts[i].aStart===null && !st.acts[i].anchor){
+      p = predict(st,i);
+      show = nowMin() > p.e + 5;
+    }
+  }
+  card.classList.toggle('hide', !show);
+  if(show){
+    var a = st.acts[i];
+    document.getElementById('forgotTitle').textContent = '⚠ '+a.name+' の開始、押し忘れていませんか？';
+    document.getElementById('forgotNote').textContent = '予定終了 '+fmt(p.e)+' を過ぎています。実際は終わっているなら下のボタンで「予定どおり」として記録して次へ進めます。';
+    document.getElementById('forgotBtn').onclick = function(){ fillAsScheduled(S.cur, i); };
+  }
+}
+
+function stageCard(st, si, full, compact){
+  var d = curDelay(st);
+  var c = document.createElement('div'); c.className='card';
+  var h = document.createElement('h2');
+  h.innerHTML = '<span>'+esc(st.name)+'</span><span class="sub">押し '+(d===0?'0':sgn(d))+'分</span>';
+  c.appendChild(h);
+  var idxs = [];
+  if(compact){
+    var ai0 = activeIdx(st), startI, endI;
+    if(ai0 < 0){ startI = Math.max(0, st.acts.length-8); endI = st.acts.length; }
+    else { startI = Math.max(0, ai0-2); endI = Math.min(st.acts.length, ai0+6); }
+    for(var k=startI;k<endI;k++) idxs.push(k);
+  } else {
+    for(var k2=0;k2<st.acts.length;k2++) idxs.push(k2);
+  }
+  idxs.forEach(function(ai){
+    var a = st.acts[ai];
+    var stt = actState(st,a,ai);
+    var p = predict(st,ai);
+    var row = document.createElement('div');
+    row.className = 'act ' + (stt==='live'?'live':stt==='done'?'done':stt==='next'?'next':'') + (a.anchor?' anchor':'');
+    var predHtml = (stt!=='done' && p.shifted) ? '<span class="pred">→ '+fmt(p.s)+'</span>' : '';
+    var actual = (a.aStart!==null) ? '実 '+fmt(a.aStart)+(a.aEnd!==null?'–'+fmt(a.aEnd):'–') : '';
+    var diff = (a.aStart!==null) ? ' ('+(a.aStart-a.start===0?'定刻':sgn(a.aStart-a.start)+'分')+')' : '';
+    var tag = a.anchor ? '<small style="color:var(--acc)">◆ この枠で押しをリセット</small>' : '';
+    var dayTag = (a.start>=1440) ? '<span style="display:block;font-size:10px;color:var(--tx2);font-weight:700">'+fmtD(a.start).split(' ')[0]+'</span>' : '';
+    row.innerHTML =
+      '<div class="tm">'+dayTag+fmt(a.start)+'<br><span style="color:var(--tx2);font-weight:600">'+fmt(a.end)+'</span>'+predHtml+'</div>'+
+      '<div class="nm">'+esc(a.name)+'<small>'+(stt==='live'?'● 進行中 ':stt==='next'?'▷ 次 ':stt==='done'?'✓ 終了 ':'')+esc(actual)+diff+'</small>'+tag+'</div>'+
+      '<div class="btns"></div>';
+    var btns = row.querySelector('.btns');
+    if(!compact && a.aStart!==null && ai===lastStampedIdx(st)){
+      var u = document.createElement('button'); u.className='sm gh'; u.textContent='取消';
+      u.onclick = function(){ undo(si,ai, a.aEnd!==null?'end':'start'); };
+      btns.appendChild(u);
+    }
+    // 「次」の枠なのに予定終了をとっくに過ぎている＝打刻し忘れ。予定どおりで埋めて先に進める
+    if(stt==='next' && !a.anchor && !preEvent() && nowMin() > p.e + 5){
+      var f = document.createElement('button'); f.className='sm gh'; f.textContent='予定どおりで埋める';
+      f.title='打刻し忘れた枠を、いまの押しのまま予定時刻で記録して次へ進む';
+      f.onclick = function(){ fillAsScheduled(si,ai); };
+      btns.appendChild(f);
+    }
+    c.appendChild(row);
+  });
+  if(!st.acts.length) c.innerHTML += '<div class="pad note">アクトがありません</div>';
+  if(compact && st.acts.length){
+    var padEl = document.createElement('div'); padEl.className='pad';
+    var allBtn = document.createElement('button'); allBtn.className='gh'; allBtn.style.width='100%';
+    allBtn.textContent = 'タイムテーブルを全部見る（'+st.acts.length+'枠）';
+    allBtn.onclick = function(){ view('all'); };
+    padEl.appendChild(allBtn);
+    c.appendChild(padEl);
+  }
+  return c;
+}
+
+function renderLogs(){
+  renderUnitStats();
+  var el = document.getElementById('logList');
+  if(!S.logs.length){ el.innerHTML='<div class="pad note">まだ記録はありません</div>'; return; }
+  el.innerHTML = S.logs.map(function(l,i){return {l:l,i:i};}).reverse().map(function(o){
+    var l = o.l;
+    var col = l.sev===1?'var(--bad)':l.sev===2?'var(--warn)':'var(--acc)';
+    return '<div class="logitem"><div class="mt">'+esc(l.time)+' / '+esc(l.day||'')+' / '+esc(l.unit||'')+
+      (l.impact?' / 押し +'+esc(l.impact)+'分':'')+
+      ' <button class="sm gh" style="padding:1px 7px;font-size:11px" onclick="delLog('+o.i+')">削除</button></div>'+
+      '<b style="color:'+col+'">'+esc(l.event)+'</b>'+
+      (l.memo?'<div class="mt">'+esc(l.memo)+'</div>':'')+
+      (l.prev?'<div class="mt">再発防止: '+esc(l.prev)+'</div>':'')+'</div>';
+  }).join('');
+}
+function delLog(i){
+  var l = S.logs[i]; if(!l) return;
+  var ok=false;
+  try{ ok = confirm('この記録を削除します（全端末から消えます）。\n'+l.time+' '+(l.unit||'')+' / '+l.event); }catch(e){ ok=false; }
+  if(!ok) return;
+  S.logs.splice(i,1); save(); renderLogs(); renderPresets();
+  if(l.uid) pushEvent('logdel', {uid:l.uid}, 'トラブル記録を削除：'+l.event);
+}
+
+// ===== live timer =====
+function tick(){
+  var n = nowMin();
+  var d = new Date();
+  renderSilence();
+  if(tick._c===undefined) tick._c=0;
+  if((++tick._c % 15)===0){
+    syncBadge();
+    renderMainBtn();
+    updateForgotCard();
+    updatePreCard();
+    // 「予定どおりで埋める」の出る/出ないが変わったら一覧を描き直す（打刻忘れに気づけるように）
+    var st0 = curStage();
+    if(st0){
+      var i0 = activeIdx(st0), elig = false;
+      if(i0>=0 && st0.acts[i0].aStart===null && !st0.acts[i0].anchor) elig = (nowMin() > predict(st0,i0).e + 5);
+      if(tick._fill!==undefined && tick._fill!==elig && document.getElementById('modal').classList.contains('hide')) render();
+      tick._fill = elig;
+    }
+  }
+  document.getElementById('clock').textContent =
+    String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  var st = curStage();
+  var L=document.getElementById('timerLabel'), V=document.getElementById('timerVal'),
+      Sb=document.getElementById('timerSub'), T=document.getElementById('timerTarget');
+  if(!st){ L.textContent='タイマー'; V.textContent='--:--'; Sb.textContent='タイムテーブル未設定'; T.textContent=''; return; }
+  var i = activeIdx(st);
+  if(i<0){ L.textContent='終演'; V.textContent='✓'; Sb.textContent='全アクト終了'; T.textContent=''; return; }
+  var a = st.acts[i];
+  if(a.aStart !== null){
+    // 進行中: 残り時間
+    var p = predict(st,i);
+    var rem = p.e - n;
+    L.textContent = a.anchor ? '▶ MUSIC STOP 中' : ('▶ 本番中 — ' + a.name);
+    T.textContent = '終了予定 ' + fmt(p.e);
+    Sb.textContent = rem>=0 ? '残り' : 'セットオーバー';
+    V.textContent = (rem<0?'+':'') + Math.floor(Math.abs(rem)/60) + ':' + String(Math.abs(rem)%60).padStart(2,'0');
+    V.style.color = rem<0 ? 'var(--bad)' : (rem<=5 ? 'var(--warn)' : 'var(--tx)');
+  } else {
+    var prev = (i>0)? st.acts[i-1] : null;
+    if(prev && prev.aEnd !== null){
+      // 転換中: 経過
+      var el = n - prev.aEnd;
+      L.textContent = '🔧 転換中 → 次は ' + a.name;
+      T.textContent = '目安 ' + S.cfg.change + '分';
+      if(preEvent()){
+        Sb.textContent = '本番前（練習用）';
+        V.textContent = '--:--';
+        V.style.color = 'var(--tx2)';
+      } else {
+        Sb.textContent = '経過';
+        V.textContent = Math.floor(el/60) + ':' + String(Math.max(0,el)%60).padStart(2,'0');
+        V.style.color = el > S.cfg.change ? 'var(--bad)' : (el > S.cfg.change-5 ? 'var(--warn)' : 'var(--acc)');
+      }
+    } else {
+      var p2 = predict(st,i);
+      var to = p2.s - n;
+      L.textContent = '⏳ 次は ' + a.name;
+      T.textContent = '開始予定 ' + fmt(p2.s);
+      if(preEvent()){
+        Sb.textContent = '本番前（練習用）';
+        V.textContent = '--:--';
+        V.style.color = 'var(--tx2)';
+      } else {
+        Sb.textContent = to>=0 ? '開始まで' : '開始予定を超過';
+        V.textContent = (to<0?'+':'') + Math.floor(Math.abs(to)/60) + ':' + String(Math.abs(to)%60).padStart(2,'0');
+        V.style.color = to<0 ? 'var(--bad)' : 'var(--tx)';
+      }
+    }
+  }
+}
+setInterval(function(){ tick(); }, 1000);
+
+// ===== プリセット UI =====
+var curCat = 6, curPreset = null;   // 初期表示はライブPC
+var COMMON_NAMES = ['片チャンネルだけ音が出ない','USB/SDを認識しない','CDJがフリーズ・要再起動','音が出ない（PC→ミキサーのLINE）','音がブチブチ切れる（ドロップアウト）','ハウリング'];
+function findPresetIndex(name){
+  for(var i=0;i<PRESETS.length;i++){ if(PRESETS[i].n===name) return i; }
+  return -1;
+}
+function renderCommon(){
+  var cg = document.getElementById('commonGrid'); if(!cg) return;
+  cg.innerHTML='';
+  COMMON_NAMES.forEach(function(nm){
+    var i = findPresetIndex(nm);
+    if(i<0) return;
+    var p = PRESETS[i];
+    var cnt = S.logs.filter(function(l){return l.pid===i;}).length;
+    var b=document.createElement('button');
+    b.className='pbtn';
+    b.innerHTML = '<span class="s s'+p.sev+'"></span>' + esc(p.n) + (cnt? '<span class="cnt">'+cnt+'件</span>' : '');
+    b.onclick = (function(idx){ return function(){ openCard(idx); }; })(i);
+    cg.appendChild(b);
+  });
+}
+function renderPresets(){
+  renderCommon();
+  var t = document.getElementById('catTabs'); t.innerHTML='';
+  CAT_ORDER.forEach(function(i){
+    var b=document.createElement('button');
+    b.className='tab'+(i===curCat?' on':''); b.textContent=CATS[i];
+    b.onclick=function(){curCat=i;renderPresets();};
+    t.appendChild(b);
+  });
+  var g = document.getElementById('presetGrid'); g.innerHTML='';
+  PRESETS.forEach(function(p,i){
+    if(p.c!==curCat) return;
+    var cnt = S.logs.filter(function(l){return l.pid===i;}).length;
+    var b=document.createElement('button');
+    b.className='pbtn';
+    b.innerHTML = '<span class="s s'+p.sev+'"></span>' + esc(p.n) + (cnt? '<span class="cnt">'+cnt+'件</span>' : '');
+    b.onclick=function(){ openCard(i); };
+    g.appendChild(b);
+  });
+}
+function openCard(i){
+  curPreset = i;
+  var free = (i===null);
+  var p = free ? null : PRESETS[i];
+  document.getElementById('mdFree').classList.toggle('hide', !free);
+  document.getElementById('mdPrevWrap').classList.toggle('hide', free);
+  document.getElementById('mdName').textContent = free ? '自由入力で記録' : p.n;
+  var sv = document.getElementById('mdSev');
+  if(free){ sv.textContent='その他'; sv.className='sevtag'; sv.style.cssText='background:var(--panel2);color:var(--tx2)'; }
+  else {
+    var m = [null,{t:'音が止まる',c:'var(--bad)'},{t:'音は出ている',c:'var(--warn)'},{t:'予兆・記録',c:'var(--acc)'}][p.sev];
+    sv.textContent = m.t; sv.style.cssText = 'background:'+m.c+';color:#0b0d10';
+  }
+  var ol = document.getElementById('mdSteps'); ol.innerHTML='';
+  (free ? ['落ち着いてから、何が起きて何をしたかを記録する。'] : p.s).forEach(function(x){
+    var li=document.createElement('li'); li.innerHTML=x; ol.appendChild(li);
+  });
+  if(!free) document.getElementById('mdPrev').textContent = p.p;
+  var u = document.getElementById('mdUnit');
+  u.innerHTML = UNITS.map(function(x){return '<option>'+esc(x)+'</option>';}).join('');
+  if(!free && p.u) u.value = p.u;
+  document.getElementById('mdImpact').value='';
+  document.getElementById('mdMemo').value='';
+  document.getElementById('mdFreeName').value='';
+  document.getElementById('modal').classList.remove('hide');
+}
+function closeCard(){ document.getElementById('modal').classList.add('hide'); }
+function saveCard(){
+  var free = (curPreset===null);
+  var p = free ? null : PRESETS[curPreset];
+  var name = free ? document.getElementById('mdFreeName').value.trim() : p.n;
+  if(!name){ toast('事象を入力してください'); return; }
+  var st = curStage();
+  var entry = {
+    uid: uid(), at: Date.now(), dev: (S.sync&&S.sync.dev)||'',
+    time: fmt(nowMin()),
+    day: st ? st.name : '—',
+    stage: 'メイン',
+    pid: free ? -1 : curPreset,
+    cat: free ? 'その他' : CATS[p.c],
+    sev: free ? 3 : p.sev,
+    event: name,
+    unit: document.getElementById('mdUnit').value,
+    impact: document.getElementById('mdImpact').value.trim(),
+    memo: document.getElementById('mdMemo').value.trim(),
+    prev: free ? '' : p.p
+  };
+  S.logs.push(entry);
+  pushEvent('log', entry,
+    'トラブル：'+entry.unit+' / '+entry.event+
+    (entry.impact?'　押し+'+entry.impact+'分':'')+
+    (entry.memo?'　'+entry.memo:''));
+  save(); closeCard(); renderLogs(); renderPresets();
+  toast('記録しました');
+}
+
+// ===== logs =====
+function renderUnitStats(){
+  var el = document.getElementById('unitStats');
+  var m = {};
+  S.logs.forEach(function(l){ if(l.unit) m[l.unit] = (m[l.unit]||0)+1; });
+  var keys = Object.keys(m).sort(function(a,b){return m[b]-m[a];});
+  if(!keys.length){ el.innerHTML='<div class="pad note">まだ記録はありません</div>'; return; }
+  el.innerHTML = keys.map(function(k){
+    return '<div class="ustat'+(m[k]>=3?' alert':'')+'"><span>'+esc(k)+'</span><b>'+m[k]+'件'+(m[k]>=3?' ← 交換を検討':'')+'</b></div>';
+  }).join('');
+}
+function copyLogSummary(){
+  var st = curStage();
+  var day = st ? st.name : '';
+  var mine = S.logs.filter(function(l){ return !day || l.day===day; });
+  if(!mine.length){ toast('この区分の記録はありません'); return; }
+  var lines = ['【'+(day||'全体')+' トラブル記録 '+mine.length+'件】'];
+  var tot = mine.reduce(function(s,l){ return s + (parseInt(l.impact,10)||0); },0);
+  if(tot) lines.push('押し影響 合計 '+tot+'分');
+  mine.forEach(function(l){
+    lines.push(l.time+' '+l.unit+' / '+l.event + (l.impact? ' / +'+l.impact+'分':'') + (l.memo? ' / '+l.memo:''));
+  });
+  var m={}; mine.forEach(function(l){ if(l.unit) m[l.unit]=(m[l.unit]||0)+1; });
+  var rep = Object.keys(m).filter(function(k){return m[k]>=3;});
+  if(rep.length) lines.push('※'+rep.join('・')+' は3件以上。交換を検討');
+  copy(lines.join('\n'));
+}
+function exportCSV(){
+  var rows = [['時刻','区分','分類','重大度','事象','機材個体','押し影響(分)','メモ','再発防止']].concat(
+    S.logs.map(function(l){return [l.time,l.day||'',l.cat||'',[,'音が止まる','音は出ている','予兆'][l.sev]||'',l.event,l.unit||'',l.impact,l.memo||'',l.prev];}));
+  var csv = '﻿' + rows.map(function(r){return r.map(function(c){return '"'+String(c||'').replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+  dl(csv, 'トラブルログ.csv', 'text/csv');
+}
+
+
+
+
+// ===== 打刻担当 =====
+// 担当が決まっていない間は誰でも打刻できる（開始時にロックしないため）
+function isStamper(){
+  if(!S.sync || !S.sync.dev) return true;      // 端末名 未設定なら制限しない
+  if(!S.roleDev) return true;                  // まだ誰も担当していない
+  return S.roleDev === S.sync.dev;
+}
+function takeRole(){
+  if(!S.sync || !S.sync.dev){ toast('先に設定で端末名を入れてください'); return false; }
+  S.roleDev = S.sync.dev;
+  pushEvent('role', {dev:S.sync.dev}, '打刻担当を「'+S.sync.dev+'」に交代');
+  save(); render();
+  toast('打刻担当になりました');
+  return true;
+}
+// 担当でない端末が打刻しようとした時
+function askTakeRole(){
+  if(!S.sync || !S.sync.dev){ toast('先に設定で端末名を入れてください'); return false; }
+  var ok=false;
+  try{
+    ok = confirm('いまの打刻担当は「'+S.roleDev+'」です。\n\n'+
+      '自分（'+S.sync.dev+'）が担当を引き継いで打刻しますか？\n'+
+      '引き継ぐと、前の担当は打刻できなくなります。');
+  }catch(e){ ok=false; }
+  if(!ok) return false;
+  return takeRole();
+}
+function renderRole(){
+  var el=document.getElementById('roleTag');
+  if(el){
+    el.onclick = null; el.style.cursor = 'default';
+    if(!S.sync || !S.sync.dev){ el.textContent=''; }
+    else if(!S.roleDev){ el.textContent='記録担当：まだ誰も（誰でも押せます）'; el.style.color='var(--tx2)'; }
+    else if(isStamper()){ el.textContent='✅ 記録担当：あなた（'+S.roleDev+'）'; el.style.color='var(--acc)'; }
+    else {
+      el.textContent='🔒 いま記録するのは '+S.roleDev+' さん。交代するときはここをタップ';
+      el.style.color='var(--warn)';
+      el.style.cursor='pointer';
+      el.onclick=function(){ askTakeRole(); };
+    }
+  }
+  var s=document.getElementById('btnStart'), e2=document.getElementById('btnEnd');
+  var off=!isStamper();
+  if(s) s.classList.toggle('locked', off);
+  if(e2) e2.classList.toggle('locked', off);
+  var r=document.getElementById('roleNow');
+  if(r) r.textContent = S.roleDev ? ('現在の記録担当：'+S.roleDev) : '現在の記録担当：未設定';
+}
+
+// ===== 設定リンク（1タップで共有設定を入れる） =====
+function b64enc(s){
+  return btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function b64dec(s){
+  s=s.replace(/-/g,'+').replace(/_/g,'/');
+  while(s.length%4) s+='=';
+  return decodeURIComponent(escape(atob(s)));
+}
+function readSetupLink(){
+  var m=(location.hash||'').match(/[#&]s=([^&]+)/);
+  if(!m) return false;
+  try{
+    var o=JSON.parse(b64dec(m[1]));
+    if(!o.u||!o.k) return false;
+    SETUP_APPLIED = o;
+    try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){ location.hash=''; }
+    return true;
+  }catch(e){ return false; }
+}
+var SETUP_APPLIED = null;
+
+// ===== 共有同期（GAS＋スプレッドシート） =====
+function syncOn(){ return !!(S.sync && S.sync.on && S.sync.url && S.sync.key); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+// GASを呼ぶ。CORSで読めない環境では JSONP に自動フォールバック
+function gas(params){
+  return new Promise(function(resolve,reject){
+    var q=Object.keys(params).map(function(k){return k+'='+encodeURIComponent(params[k]);}).join('&');
+    var base=S.sync.url + (S.sync.url.indexOf('?')<0?'?':'&');
+    fetch(base+q,{method:'GET'})
+      .then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.text(); })
+      .then(function(t){ resolve(t); })
+      .catch(function(){
+        var cb='__cb'+uid();
+        var s=document.createElement('script');
+        var t=setTimeout(function(){ cleanup(); reject(new Error('timeout')); },12000);
+        function cleanup(){ clearTimeout(t); try{delete window[cb];}catch(e){window[cb]=undefined;} if(s.parentNode) s.parentNode.removeChild(s); }
+        window[cb]=function(v){ cleanup(); resolve(v); };
+        s.onerror=function(){ cleanup(); reject(new Error('jsonp')); };
+        s.src=base+q+'&callback='+cb;
+        document.body.appendChild(s);
+      });
+  });
+}
+
+function pushEvent(kind, data, note){
+  var item={kind:kind, data:JSON.stringify(data), note:note||'', t:Date.now()};
+  // 共有先が設定済みなら、同期オフ・圏外でも必ず貯める（オンになった時にまとめて送る）
+  if(!(S.sync && S.sync.url && S.sync.key)) return;
+  S.sync.outbox.push(item); save();
+  flushOutbox();
+}
+
+// GASの応答が「受け付けた」と読めるかを判定。
+// HTML（権限エラー・デプロイ切れのページ）や空応答は失敗扱いにして送信済みにしない。
+// 'ok' = 受理 / 'rejected' = GASが明示的に拒否（合言葉違い・未知の種別など。再送しても無駄）/ 'broken' = HTML・空応答（デプロイ切れ・権限。あとで再送）
+function gasVerdict(t){
+  if(t && typeof t==='object') return ('ok' in t && !t.ok) ? 'rejected' : 'ok';   // JSONP経由
+  var s = String(t==null?'':t).trim();
+  if(!s) return 'broken';
+  if(s.charAt(0)==='<') return 'broken';
+  try{ var r=JSON.parse(s); if(r && typeof r==='object' && 'ok' in r) return r.ok ? 'ok' : 'rejected'; }catch(e){}
+  return 'ok';   // "ok"/"sent" などのプレーン応答は成功とみなす
+}
+
+function flushOutbox(){
+  if(!syncOn() || !S.sync.outbox.length || flushOutbox._busy) return;
+  flushOutbox._busy=true;
+  var item=S.sync.outbox[0];
+  gas({key:S.sync.key, op:'push', kind:item.kind, dev:S.sync.dev||'SM', data:item.data, note:item.note||''})
+    .then(function(t){
+      var v = gasVerdict(t);
+      if(v==='broken'){ flushOutbox._busy=false; S.sync.lastErr=String(t).slice(0,80); save(); syncBadge(); return; }
+      if(v==='rejected'){
+        // 明示的に拒否された1件だけ捨てて、後ろを詰まらせない（記録は端末側に残る）
+        S.sync.lastErr='拒否: '+String(typeof t==='object'?JSON.stringify(t):t).slice(0,80);
+        addFeed({seq:'rej'+item.t, kind:'reject', dev:S.sync.dev||'', note:'【送信できず・共有されていません】'+(item.note||item.kind), ts:new Date().toISOString()});
+        S.sync.outbox.shift(); save(); flushOutbox._busy=false; renderReports();
+        if(S.sync.outbox.length) flushOutbox();
+        syncBadge(); return;
+      }
+      S.sync.lastErr='';
+      S.sync.outbox.shift(); save(); flushOutbox._busy=false;
+      if(S.sync.outbox.length) flushOutbox();
+      syncBadge();
+    })
+    .catch(function(){ flushOutbox._busy=false; syncBadge(); });
+}
+
+function pullEvents(){
+  if(!syncOn() || pullEvents._busy) return;
+  pullEvents._busy=true;
+  gas({key:S.sync.key, op:'pull', since:S.sync.last||0})
+    .then(function(t){
+      var r=(typeof t==='string')?JSON.parse(t):t;
+      pullEvents._busy=false;
+      if(!r || !r.ok) return;
+      // 統括がGAS側で記録を消す（clearEvents）と通し番号が1に戻る。
+      // 自分の読み取り位置がサーバーの最新より先にあったら、先頭から取り直す（取りこぼし防止）
+      if(typeof r.last==='number' && (S.sync.last||0) > r.last){
+        S.sync.last=0; S.feed=[]; save();
+        if(r.last>0){ setTimeout(pullEvents, 300); return; }
+      }
+      var changed=false;
+      (r.events||[]).forEach(function(ev){ if(applyEvent(ev)) changed=true; addFeed(ev); });
+      S.sync.last=r.last||S.sync.last;
+      S.sync.lastOk=Date.now();
+      save();
+      if(changed) render(); else syncBadge();
+    })
+    .catch(function(){ pullEvents._busy=false; syncBadge(); });
+}
+
+function applyEvent(ev){
+  var d; try{ d=JSON.parse(ev.data); }catch(e){ return false; }
+  var st=S.stages[0]; if(!st) return false;
+
+  if(ev.kind==='stamp'){
+    var a=st.acts[d.i];
+    if(!a) return false;
+    if(d.name && a.name!==d.name) return false;      // タイテがズレている端末には適用しない
+    if(a[d.f]===d.v) return false;
+    a[d.f]=d.v;
+    return true;
+  }
+  if(ev.kind==='log'){
+    if(!d.uid) return false;
+    if(S.logs.some(function(l){return l.uid===d.uid;})) return false;
+    if((S.deletedLogs||[]).indexOf(d.uid)>=0) return false;   // 削除済みは復活させない
+    d.dev=ev.dev||'';
+    S.logs.push(d);
+    S.logs.sort(function(x,y){return (x.at||0)-(y.at||0);});
+    return true;
+  }
+  if(ev.kind==='logdel'){
+    if(!d.uid) return false;
+    if(!S.deletedLogs) S.deletedLogs=[];
+    if(S.deletedLogs.indexOf(d.uid)<0) S.deletedLogs.push(d.uid);
+    var before=S.logs.length;
+    S.logs=S.logs.filter(function(l){return l.uid!==d.uid;});
+    return S.logs.length!==before;
+  }
+  if(ev.kind==='reset'){
+    var sc=(d && d.scope)||'stamps';
+    var ch=false;
+    st.acts.forEach(function(a){
+      if(a.aStart!==null || a.aEnd!==null){ a.aStart=null; a.aEnd=null; ch=true; }
+    });
+    if(sc==='all'){ if(S.logs.length){ S.logs=[]; ch=true; } S.deletedLogs=[]; }
+    return ch;
+  }
+  if(ev.kind==='role'){
+    if(!d.dev || S.roleDev===d.dev) return false;
+    S.roleDev=d.dev;
+    return true;
+  }
+  if(ev.kind==='call'){
+    if(S.reports.some(function(r){return r.seq===ev.seq;})) return false;
+    S.reports.push({kind:'T', seq:ev.seq, time:(ev.ts||'').slice(11,16), stage:'ブース',
+      unit:'演者呼び出し', event:(d.type==='sound'?'🔊 音のトラブル':d.type==='drink'?'🥤 ドリンク':'✅ 対応済み'),
+      impact:0, sev:(d.type==='sound'?1:d.type==='drink'?2:3), rx:nowMin()});
+    S.lastRx=nowMin();
+    return true;
+  }
+  return false;
+}
+
+function syncBadge(){
+  var el=document.getElementById('syncTag'); if(!el) return;
+  if(!syncOn()){ el.textContent='○ 共有していません'; el.style.color='var(--tx2)'; return; }
+  var q=S.sync.outbox.length;
+  if(S.sync.lastErr){ el.textContent='● 送れていません（設定→困ったとき→接続テスト）'; el.style.color='var(--bad)'; return; }
+  var m = S.sync.lastOk ? Math.floor((Date.now()-S.sync.lastOk)/60000) : null;
+  var stale = (m===null) || m>=5;
+  if(q>0 || stale){ el.textContent='● 未送信 '+q+'件（電波を確認）'; el.style.color='var(--warn)'; return; }
+  el.textContent='● つながっています'; el.style.color='var(--acc)';
+}
+
+function saveSync(){
+  S.sync.url=document.getElementById('syUrl').value.trim();
+  S.sync.key=document.getElementById('syKey').value.trim();
+  S.sync.dev=document.getElementById('syDev').value.trim();
+  save(); syncBadge();
+  document.getElementById('syResult').textContent='保存しました';
+}
+function toggleSync(){
+  S.sync.on=!S.sync.on; save(); syncBadge();
+  document.getElementById('syToggle').textContent=S.sync.on?'同期オン':'同期オフ';
+  toast(S.sync.on?'同期をオンにしました':'同期をオフにしました');
+}
+function testSync(){
+  var el=document.getElementById('syResult');
+  saveSync();
+  if(!syncOn()){ el.textContent='URLと合言葉を入れてください'; return; }
+  el.textContent='接続中…';
+  gas({key:S.sync.key, op:'pull', since:0})
+    .then(function(t){
+      var r=(typeof t==='string')?JSON.parse(t):t;
+      if(r&&r.ok){ el.textContent='✓ つながりました（記録 '+(r.events||[]).length+'件）'; S.sync.lastOk=Date.now(); save(); syncBadge(); }
+      else el.textContent='✗ '+String(t).slice(0,60);
+    })
+    .catch(function(){ el.textContent='✗ つながりません。URLと電波を確認してください'; });
+}
+function syncNow(){ flushOutbox(); pullEvents(); toast('同期しています'); }
+function makeSetupLink(){
+  saveSync();
+  var el=document.getElementById('syResult');
+  if(!S.sync.url||!S.sync.key){ el.textContent='先に共有URLと合言葉を入れてください'; return; }
+  var link=location.origin+location.pathname+'#s='+b64enc(JSON.stringify({u:S.sync.url,k:S.sync.key}));
+  copy(link);
+  el.textContent='配布用リンクをコピーしました。SMグループLINEに貼ってください（このリンクは外に出さないこと）';
+}
+
+// ===== モード / 報告 =====
+function setMode(m){
+  S.mode = m; save(); applyMode(); render();
+  toast(m==='lead' ? '統括モードにしました' : '現場SMモードにしました');
+}
+function applyMode(){
+  var lead = (S.mode !== 'sm');
+  document.getElementById('smCopyBtn').classList.add('hide');   // 常に非表示（LINE貼り保険ボタンに統合）
+  var a=document.getElementById('mdLead'), b=document.getElementById('mdSm');
+  if(a&&b){ a.className = lead?'p':''; b.className = lead?'':'p'; }
+  // 進行画面のカード順（要素を移動するだけ。複製はしない）
+  // 統括: 最近の動き → 打刻忘れ → いまカード → タイテ
+  // 現場SM: 打刻忘れ → いまカード → 最近の動き → タイテ（ボタンを一番上に）
+  var run = document.getElementById('v-run'), reportCard = document.getElementById('reportCard'),
+      forgotCard = document.getElementById('forgotCard'), stageGrid = document.getElementById('stageGrid');
+  if(run && reportCard && forgotCard && stageGrid){
+    if(lead) run.insertBefore(reportCard, forgotCard);
+    else run.insertBefore(reportCard, stageGrid);
+  }
+}
+// 進行報告テキスト（人が読める本文＋機械が読む末尾行）
+function makeReport(){
+  var st = curStage(); if(!st) return null;
+  var d = curDelay(st), i = activeIdx(st);
+  var nowName='', nextName='', nextT='';
+  if(i<0){ nowName='全アクト終了'; }
+  else if(st.acts[i].aStart!==null){
+    nowName = st.acts[i].name;
+    if(i+1 < st.acts.length){ nextName = st.acts[i+1].name; nextT = fmt(predict(st,i+1).s); }
+  } else { nextName = st.acts[i].name; nextT = fmt(predict(st,i).s); }
+  var L = ['【'+st.name+' '+fmt(nowMin())+'】'];
+  if(nowName) L.push('進行中: '+nowName);
+  L.push('押し: '+(d===0?'定刻':sgn(d)+'分'));
+  if(nextName) L.push('次: '+nextName+' '+nextT);
+  L.push('#R '+fmt(nowMin())+'|'+st.name+'|'+d+'|'+nowName+'|'+nextName+'|'+nextT);
+  return L.join('\n');
+}
+function makeTroubleReport(l){
+  return '【トラブル '+l.day+' '+l.time+'】\n'+l.unit+' / '+l.event+
+    (l.impact? '\n押し影響 +'+l.impact+'分':'') + (l.memo? '\n'+l.memo:'') +
+    '\n#T '+l.time+'|'+l.day+'|'+l.unit+'|'+l.event+'|'+(l.impact||0)+'|'+(l.sev||3);
+}
+function copyReport(){
+  var t = makeReport();
+  if(!t){ toast('タイムテーブル未設定'); return; }
+  copy(t);
+}
+function importReport(){
+  var txt = document.getElementById('rxIn').value;
+  if(!txt.trim()){ toast('報告を貼り付けてください'); return; }
+  var n = 0;
+  txt.split(/\n/).forEach(function(line){
+    line = line.trim();
+    var m;
+    if((m = line.match(/^#R\s+(.+)$/))){
+      var p = m[1].split('|');
+      S.reports.push({kind:'R', time:p[0]||'', stage:p[1]||'', delay:parseInt(p[2],10)||0,
+                      now:p[3]||'', next:p[4]||'', nextT:p[5]||'', rx:nowMin()});
+      n++;
+    } else if((m = line.match(/^#T\s+(.+)$/))){
+      var q = m[1].split('|');
+      S.reports.push({kind:'T', time:q[0]||'', stage:q[1]||'', unit:q[2]||'', event:q[3]||'',
+                      impact:parseInt(q[4],10)||0, sev:parseInt(q[5],10)||3, rx:nowMin()});
+      n++;
+    }
+  });
+  if(!n){ toast('報告が見つかりません（#R / #T の行が必要）'); return; }
+  S.lastRx = nowMin();
+  document.getElementById('rxIn').value = '';
+  save(); render(); toast(n + '件を取り込みました');
+}
+function addFeed(ev){
+  if(!S.feed) S.feed=[];
+  if(ev.seq!==undefined && S.feed.some(function(x){return x.seq===ev.seq;})) return;
+  S.feed.push({seq:ev.seq, kind:ev.kind, dev:ev.dev||'', note:ev.note||'', ts:String(ev.ts||'')});
+  if(S.feed.length>60) S.feed=S.feed.slice(-60);
+}
+function feedColor(k){
+  return k==='call'?'var(--bad)':k==='log'?'var(--warn)':k==='reset'?'var(--bad)':k==='reject'?'var(--bad)':
+         k==='role'?'var(--live)':'var(--acc)';
+}
+function feedLabel(k){
+  return {stamp:'打刻', log:'トラブル', logdel:'記録削除', call:'呼び出し', role:'担当', reset:'リセット', reject:'送信拒否'}[k]||k;
+}
+function renderReports(){
+  var sTag = document.getElementById('silenceTag');
+  if(sTag) sTag.classList.toggle('hide', S.mode==='sm');
+  var el = document.getElementById('rxList');
+  var fd = (S.feed||[]).filter(function(x){return x.note;});
+  if(fd.length){
+    el.innerHTML = fd.slice().reverse().slice(0, S.mode==='sm'?3:20).map(function(x){
+      var t=(x.ts||'').match(/\d{1,2}:\d{2}/);
+      return '<div class="logitem"><div class="mt">'+(t?esc(t[0]):'')+'　'+esc(x.dev)+'</div>'+
+        '<b style="color:'+feedColor(x.kind)+'">['+feedLabel(x.kind)+']</b> '+esc(x.note)+'</div>';
+    }).join('');
+    return;
+  }
+  if(!S.reports.length){ el.innerHTML='<div class="pad note">まだ動きはありません</div>'; return; }
+  el.innerHTML = S.reports.slice(-8).reverse().map(function(r){
+    if(r.kind==='T'){
+      var col = r.sev===1?'var(--bad)':r.sev===2?'var(--warn)':'var(--acc)';
+      return '<div class="logitem"><div class="mt">'+esc(r.time)+' / '+esc(r.stage)+' / '+esc(r.unit)+
+        (r.impact?' / +'+r.impact+'分':'')+'</div><b style="color:'+col+'">'+esc(r.event)+'</b></div>';
+    }
+    var c = Math.abs(r.delay) < S.cfg.warn ? 'var(--acc)' : (Math.abs(r.delay) < S.cfg.esc ? 'var(--warn)' : 'var(--bad)');
+    return '<div class="logitem"><div class="mt">'+esc(r.time)+' / '+esc(r.stage)+'</div>'+
+      '<b style="color:'+c+'">押し '+(r.delay===0?'定刻':sgn(r.delay)+'分')+'</b>'+
+      (r.now?' — 進行中 '+esc(r.now):'')+
+      (r.next?'<div class="mt">次: '+esc(r.next)+' '+esc(r.nextT)+'</div>':'')+'</div>';
+  }).join('');
+}
+function renderRx(){
+  var on=syncOn();
+  var a=document.getElementById('rxAuto'), m=document.getElementById('rxManual');
+  if(a) a.classList.toggle('hide', !on || S.mode==='sm');
+  if(m) m.classList.toggle('hide', on);
+}
+function renderSilence(){
+  var el = document.getElementById('silenceTag'); if(!el) return;
+  if(!S.lastRx){ el.textContent='報告待ち'; el.style.color='var(--tx2)'; return; }
+  var mins = nowMin() - S.lastRx;
+  el.textContent = '最終受信から ' + mins + '分';
+  el.style.color = mins >= S.cfg.silence ? 'var(--bad)' : (mins >= S.cfg.silence*0.6 ? 'var(--warn)' : 'var(--tx2)');
+  el.style.fontWeight = mins >= S.cfg.silence ? '800' : '600';
+}
+
+// ===== share =====
+function shareLine(){
+  if(!S.stages.length){ toast('タイムテーブル未設定'); return; }
+  var lines = ['【進行状況 ' + fmt(nowMin()) + '】'];
+  S.stages.forEach(function(st){
+    var d = curDelay(st), i = activeIdx(st);
+    var s = '■' + st.name + ' ' + (d===0?'定刻':sgn(d)+'分');
+    if(i<0) s += ' / 終了';
+    else if(st.acts[i].aStart!==null) s += ' / 進行中: ' + st.acts[i].name;
+    else s += ' / 次: ' + st.acts[i].name + ' ' + fmt(predict(st,i).s);
+    lines.push(s);
+    if(d!==0){
+      var an = nextAnchor(st), li = st.acts.length-1;
+      if(an>=0){
+        var cr = anchorCarry(st.acts[an], delayAt(st,an));
+        lines.push('  ' + st.acts[an].name + ' 開始見込 ' + fmt(predict(st,an).s) + '（予定 ' + fmt(st.acts[an].start) + '）' +
+          (cr>0 ? '以降 '+sgn(cr)+'分 持ち越し' : '以降リセット'));
+      }
+      else if(st.acts[li]) lines.push('  最終終了見込 ' + fmt(predict(st,li).e) + '（予定 ' + fmt(st.acts[li].end) + '）');
+    }
+  });
+  var mx = Math.max.apply(null, S.stages.map(function(x){return Math.abs(curDelay(x));}));
+  if(mx >= S.cfg.esc) lines.push('※上位判断が必要な押し幅です');
+  var txt = lines.join('\n');
+  copy(txt);
+}
+function copy(t){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){toast('コピーしました');},function(){fallback(t);});
+  } else fallback(t);
+  function fallback(x){
+    var ta=document.createElement('textarea'); ta.value=x; document.body.appendChild(ta);
+    ta.select(); try{document.execCommand('copy'); toast('コピーしました');}catch(e){ alert(x); }
+    document.body.removeChild(ta);
+  }
+}
+
+// ===== data =====
+function saveCfg(){
+  S.startDate  = document.getElementById('cfgStart').value || S.startDate;
+  S.cfg.change = parseInt(document.getElementById('cfgChange').value,10)||15;
+  S.cfg.warn   = parseInt(document.getElementById('cfgWarn').value,10)||15;
+  S.cfg.esc    = parseInt(document.getElementById('cfgEsc').value,10)||30;
+  S.cfg.silence= parseInt(document.getElementById('cfgSilence').value,10)||30;
+  save(); render(); toast('保存しました');
+}
+function exportJSON(){ dl(JSON.stringify(S,null,2), 'sm-dashboard-backup.json', 'application/json'); }
+function importJSON(el){
+  var f = el.files[0]; if(!f) return;
+  var r = new FileReader();
+  r.onload = function(){ try{ S = JSON.parse(r.result); save(); render(); toast('読み込みました'); }catch(e){ toast('ファイルが不正です'); } };
+  r.readAsText(f);
+}
+function resetStamps(){
+  if(!confirm('全ての打刻を消します。\n\n共有がオンなら【全員の端末】から消えます。\nタイムテーブルとログは残ります。')) return;
+  S.stages.forEach(function(st){st.acts.forEach(function(a){a.aStart=null;a.aEnd=null;});});
+  pushEvent('reset',{scope:'stamps'}, '打刻をリセット（全端末）');
+  save(); render(); toast('打刻をリセットしました');
+}
+function resetAll(){
+  if(!confirm('打刻とトラブルログを全部消します。\n\n共有がオンなら【全員の端末】からも消えます。\n共有設定・タイムテーブルは残ります。\n\nよろしいですか？')) return;
+  pushEvent('reset',{scope:'all'}, '記録を全消去（全端末）');
+  S.logs = []; S.reports = []; S.feed = []; S.deletedLogs = []; S.lastRx = null; S.roleDev = '';
+  S.sync.last = 0;   // 読み取り位置も先頭に戻す（GAS側で記録を消した直後の取りこぼし防止）
+  S.stages.forEach(function(st){ st.acts.forEach(function(a){ a.aStart=null; a.aEnd=null; }); });
+  save(); render(); toast('消去しました');
+}
+function dl(content, name, type){
+  var b = new Blob([content], {type:type+';charset=utf-8'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// ===== マニュアル描画 =====
+var manOpen = {0:true,1:true};
+function renderManual(){
+  var q = (document.getElementById('manSearch').value||'').trim().toLowerCase();
+  var el = document.getElementById('manList'); el.innerHTML='';
+  var hit = 0;
+  MANUAL.forEach(function(m,i){
+    if(q){
+      var hay = (m.t + ' ' + m.k + ' ' + m.h.replace(/<[^>]+>/g,'')).toLowerCase();
+      if(hay.indexOf(q) < 0) return;
+    }
+    hit++;
+    var open = q ? true : !!manOpen[i];
+    var c = document.createElement('div'); c.className='card'; c.style.marginBottom='10px';
+    var h = document.createElement('h2');
+    h.style.cursor='pointer'; h.style.color='var(--tx)'; h.style.fontSize='16px';
+    h.innerHTML = '<span>'+esc(m.t)+'</span><span class="sub">'+(open?'−':'＋')+'</span>';
+    h.onclick = function(){ manOpen[i] = !open; renderManual(); };
+    c.appendChild(h);
+    if(open){ var b=document.createElement('div'); b.className='mbody'; b.innerHTML=m.h; c.appendChild(b); }
+    el.appendChild(c);
+  });
+  if(!hit) el.innerHTML='<div class="card"><div class="pad note">「'+esc(q)+'」に該当する項目はありません</div></div>';
+}
+
+// ===== テーマ（昼＝屋外の直射日光下でも読める高コントラスト） =====
+function applyTheme(){
+  var day = (S.theme === 'day');
+  document.body.classList.toggle('day', day);
+  var b = document.getElementById('themeBtn');
+  if(b) b.textContent = day ? '☾' : '☀';
+  var m = document.querySelector('meta[name="theme-color"]');
+  if(m) m.setAttribute('content', day ? '#ffffff' : '#0b0d10');
+}
+function toggleTheme(){
+  S.theme = (S.theme === 'day') ? 'night' : 'day';
+  save(); applyTheme();
+  toast(S.theme==='day' ? '昼モード（屋外で読みやすく）' : '夜モード');
+}
+// 進行中／次のアクトまでスクロール
+function jumpToNow(){
+  var el = document.querySelector('.act.live') || document.querySelector('.act.next');
+  if(!el){ window.scrollTo(0,0); return; }
+  el.scrollIntoView({block:'center', behavior:'smooth'});
+}
+
+// ===== ui =====
+function view(v){
+  if(v==='man') renderManual();
+  ['run','all','log','man','setup'].forEach(function(x){
+    var el = document.getElementById('v-'+x); if(el) el.classList.toggle('hide', x!==v);
+    var fb = document.getElementById('fb-'+x); if(fb) fb.className = (x===v?'p':'');
+  });
+  document.getElementById('nowBtn').classList.toggle('hide', v!=='all');
+  window.scrollTo(0,0);
+  if(v==='all') setTimeout(jumpToNow, 60);
+}
+// ===== 設定「統括のみ」の折りたたみ =====
+var leadOpen = false;
+function toggleLead(){
+  leadOpen = !leadOpen;
+  document.getElementById('leadBody').classList.toggle('hide', !leadOpen);
+  document.getElementById('leadToggleIcon').textContent = leadOpen ? '−' : '＋';
+}
+// ===== 初回起動シート =====
+function welcomeGo(){
+  var n = document.getElementById('wName').value.trim();
+  if(!n){ toast('名前を入れてください'); return; }
+  S.sync.dev = n;
+  document.getElementById('syDev').value = n;
+  if(SETUP_APPLIED) S.mode = 'sm';
+  save(); applyMode(); render();
+  document.getElementById('welcome').classList.add('hide');
+  toast('準備できました');
+}
+function toast(m){
+  var t = document.getElementById('toast'); t.textContent = m; t.classList.add('on');
+  clearTimeout(t._t); t._t = setTimeout(function(){t.classList.remove('on');}, 2200);
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+// init
+load();
+(function(){ ['verTag','verHead'].forEach(function(id){ var v=document.getElementById(id); if(v) v.textContent=APP_VERSION; }); })();
+document.getElementById('cfgChange').value = S.cfg.change;
+document.getElementById('cfgWarn').value = S.cfg.warn;
+document.getElementById('cfgEsc').value = S.cfg.esc;
+document.getElementById('cfgSilence').value = S.cfg.silence;
+document.getElementById('cfgStart').value = S.startDate;
+readSetupLink();
+if(SETUP_APPLIED){
+  S.sync.url=SETUP_APPLIED.u; S.sync.key=SETUP_APPLIED.k; S.sync.on=true; save();
+}
+applyTheme();
+applyMode();
+document.getElementById('syUrl').value = S.sync.url||'';
+document.getElementById('syKey').value = S.sync.key||'';
+document.getElementById('syDev').value = S.sync.dev||'';
+document.getElementById('syToggle').textContent = S.sync.on?'同期オン':'同期オフ';
+syncBadge();
+setInterval(function(){ flushOutbox(); pullEvents(); }, 20000);
+if(SETUP_APPLIED){
+  setTimeout(function(){
+    syncBadge(); pullEvents();
+    toast('共有設定が入りました');
+  }, 900);
+}
+setTimeout(function(){ if(syncOn()) pullEvents(); }, 1200);
+// 端末の時刻が日本時間でないと打刻が全部ズレる（海外SIM・海外設定の端末対策）
+if(new Date().getTimezoneOffset() !== -540){
+  setTimeout(function(){
+    var last = 0; try{ last = parseInt(localStorage.getItem('sm-tzwarn')||'0',10)||0; }catch(e){}
+    if(Date.now()-last > 6*3600*1000){
+      try{ localStorage.setItem('sm-tzwarn', String(Date.now())); }catch(e){}
+      try{ alert('この端末の時刻設定が日本時間（JST）ではありません。\n打刻の時刻がズレます。設定 → 一般 → 日付と時刻 を日本にしてください。'); }catch(e){}
+    } else toast('端末の時刻が日本時間ではありません');
+  }, 1500);
+}
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState==='visible' && syncOn()){ flushOutbox(); pullEvents(); }
+});
+// 初回起動時は本番タイムテーブルを自動で読み込む。
+// 打刻もログもまだ無い端末で、保存済みタイテが本番タイテ（REAL_TT）と違えば黙って入れ直す
+// （版が上がって名前や時刻を直した時に、古いタイテのまま同期がズレるのを防ぐ）
+function ttSignature(stages){
+  return (stages||[]).map(function(st){ return st.name+'|'+st.acts.map(function(a){return a.start+'-'+a.end+':'+a.name+(a.anchor?'!':'');}).join(','); }).join('||');
+}
+function ttUntouched(){
+  if(S.logs && S.logs.length) return false;
+  return !(S.stages||[]).some(function(st){ return st.acts.some(function(a){ return a.aStart!==null || a.aEnd!==null; }); });
+}
+if(!S.stages.length){
+  document.getElementById('ttInput').value = REAL_TT;
+  loadTT(REAL_TT);
+} else {
+  var needRefresh = false;
+  try{ needRefresh = ttUntouched() && ttSignature(parseTT(REAL_TT)) !== ttSignature(S.stages); }catch(e){ needRefresh = false; }
+  if(needRefresh){
+    document.getElementById('ttInput').value = REAL_TT;
+    loadTT(REAL_TT);
+  } else {
+    render();
+    view('run');
+  }
+}
+// 名前が未入力の端末（初回起動・配布リンク経由とも）には必ず「はじめに」シートを出す
+if(!S.sync.dev){
+  document.getElementById('welcome').classList.remove('hide');
+}
+</script>
+</body>
+</html>
