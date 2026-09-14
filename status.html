@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0d10">
+<meta name="format-detection" content="telephone=no">
+<title>GAIA メインステージ 状況</title>
+<style>
+:root{
+  --bg:#0b0d10; --panel:#14181d; --panel2:#1b2027; --line:#2a323c;
+  --tx:#e8edf3; --tx2:#9aa7b5; --acc:#4ade80; --warn:#fbbf24; --bad:#f87171; --live:#38bdf8;
+  --hdr:rgba(11,13,16,.95);
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+}
+body.day{
+  --bg:#ffffff; --panel:#f4f6f8; --panel2:#e8ecf0; --line:#c3ccd6;
+  --tx:#0a0e13; --tx2:#4d5a68; --acc:#0f8f43; --warn:#a86a00; --bad:#c9252d; --live:#0369a1;
+  --hdr:rgba(255,255,255,.96);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+  font-size:17px;line-height:1.5;padding-bottom:calc(20px + var(--sab))}
+header{position:sticky;top:0;z-index:50;background:var(--hdr);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
+  padding:calc(8px + var(--sat)) 14px 8px}
+.hrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ttl{font-weight:800;font-size:16px;flex:1}
+.clock{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.iconbtn{min-width:42px;min-height:36px;padding:6px 10px;font-size:15px}
+button{font-family:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--tx);
+  padding:11px 12px;font-weight:700;font-size:15px;min-height:40px;touch-action:manipulation}
+button:active{transform:scale(.97);opacity:.85}
+button.gh{background:transparent;color:var(--tx2)}
+.sub{color:var(--tx2);font-size:13px;font-weight:700}
+.sub.ok{color:var(--acc)}
+.sub.wr{color:var(--warn)}
+.sub.bd{color:var(--bad)}
+main{padding:12px;max-width:1200px;margin:0 auto}
+.wrap{display:grid;gap:12px;grid-template-columns:1fr;
+  grid-template-areas:"ima" "chui" "nagare" "ugoki" "trouble"}
+@media(min-width:900px){
+  .wrap{grid-template-columns:1fr 1fr;
+    grid-template-areas:"ima chui" "nagare ugoki" "nagare trouble"}
+}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.card h2{margin:0;padding:12px 14px;font-size:14px;letter-spacing:.05em;color:var(--tx2);border-bottom:1px solid var(--line);
+  display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pad{padding:14px}
+.note{color:var(--tx2);font-size:12px;line-height:1.6}
+.hide{display:none!important}
+.logitem{padding:12px 14px;border-bottom:1px solid var(--line);font-size:15px}
+.logitem:last-child{border-bottom:none}
+.logitem .mt{color:var(--tx2);font-size:12px;font-variant-numeric:tabular-nums;margin-bottom:2px}
+.ustat{display:flex;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--line);font-size:14px}
+.ustat:last-child{border-bottom:none}
+.ustat b{font-variant-numeric:tabular-nums}
+.ustat.alert b{color:var(--bad)}
+
+/* いまカード */
+.pill{display:inline-block;font-weight:800;font-size:28px;padding:6px 16px;border-radius:999px;line-height:1.3;
+  font-variant-numeric:tabular-nums}
+.pill-gray{background:var(--panel2);color:var(--tx2)}
+.pill-ok{background:rgba(74,222,128,.15);color:var(--acc)}
+.pill-wr{background:rgba(251,191,36,.15);color:var(--warn)}
+.pill-bd{background:rgba(248,113,113,.15);color:var(--bad)}
+.row1{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-top:16px;flex-wrap:wrap}
+#row1Label{font-size:19px;font-weight:800;overflow-wrap:anywhere}
+.row1R{text-align:right}
+#row1SubLabel{font-size:12px;color:var(--tx2);font-weight:700}
+#row1Val{font-size:44px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+#row1Target{margin-top:6px;color:var(--tx2);font-size:13px}
+#row2{margin-top:12px;font-size:16px;font-weight:700}
+#row3{margin-top:6px;color:var(--tx2);font-size:13px;line-height:1.6}
+.row4{margin-top:14px;padding-top:10px;border-top:1px solid var(--line);color:var(--tx2);font-size:13px;line-height:1.9}
+
+/* 注意カード */
+.chuirow{padding:11px 14px;border-bottom:1px solid var(--line);font-weight:700;font-size:15px}
+.chuirow:last-child{border-bottom:none}
+
+/* これからの流れ */
+.frow{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)}
+.frow:last-child{border-bottom:none}
+.frow.live{background:rgba(56,189,248,.09);box-shadow:inset 3px 0 0 var(--live)}
+.frow.next{box-shadow:inset 3px 0 0 var(--warn)}
+.frow.anchor{background:rgba(74,222,128,.09)}
+.frow.anchor .fn{color:var(--acc)}
+.ft{font-variant-numeric:tabular-nums;font-weight:800;font-size:14px;color:var(--tx)}
+.ft2{display:inline-block;margin-top:2px;font-weight:700;font-size:11px;color:var(--tx2)}
+.fn{font-weight:700;font-size:16px;overflow-wrap:anywhere}
+#doneSummary{padding:10px 14px;color:var(--tx2);font-size:13px;border-bottom:1px solid var(--line)}
+#flowToggleBtn{display:block;width:100%;border-radius:0}
+
+/* 設定なし */
+.nsWrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center}
+.nsMsg{font-size:19px;font-weight:800;color:var(--tx2);line-height:1.8;max-width:340px}
+
+footer{max-width:1200px;margin:0 auto;padding:20px 16px calc(16px + var(--sab));text-align:center;
+  color:var(--tx2);font-size:12px;line-height:1.8}
+</style>
+</head>
+<body>
+
+<div id="noSetup" class="hide">
+  <div class="nsWrap"><div class="nsMsg">統括からもらったリンクで開いてください</div></div>
+</div>
+
+<div id="dash" class="hide">
+
+<header>
+  <div class="hrow">
+    <div class="ttl">GAIA メインステージ</div>
+    <div class="clock" id="clock">--:--</div>
+  </div>
+  <div class="hrow" style="margin-top:6px">
+    <span class="sub ok" id="updTag">● 更新 たった今</span>
+    <div style="flex:1"></div>
+    <button class="iconbtn gh" id="themeBtn" onclick="toggleTheme()" title="昼夜切替">☀</button>
+    <button class="iconbtn gh" onclick="pullAll()" title="今すぐ更新">↻</button>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+  <div class="card" id="cardIma" style="grid-area:ima">
+    <h2><span>いま</span></h2>
+    <div class="pad">
+      <div id="pill" class="pill pill-gray">—</div>
+      <div class="row1">
+        <div id="row1Label">読み込み中…</div>
+        <div class="row1R">
+          <div id="row1SubLabel"></div>
+          <div id="row1Val"></div>
+        </div>
+      </div>
+      <div id="row1Target"></div>
+      <div id="row2"></div>
+      <div id="row3"></div>
+      <div class="row4">
+        <div id="row4a">記録担当　未設定</div>
+        <div id="row4b">最終の記録　—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card hide" id="cardChui" style="grid-area:chui">
+    <h2><span>注意</span></h2>
+    <div id="chuiList"></div>
+  </div>
+
+  <div class="card" id="cardNagare" style="grid-area:nagare">
+    <h2><span>これからの流れ</span></h2>
+    <div id="doneSummary" class="hide"></div>
+    <div id="flowList"></div>
+    <button id="flowToggleBtn" class="gh" onclick="">全部見る</button>
+  </div>
+
+  <div class="card" id="cardUgoki" style="grid-area:ugoki">
+    <h2><span>最近の動き</span></h2>
+    <div id="feedList"></div>
+  </div>
+
+  <div class="card" id="cardTrouble" style="grid-area:trouble">
+    <h2><span>トラブル</span><span class="sub" id="troubleCount">合計 0件</span></h2>
+    <div id="unitStats"></div>
+    <div id="troubleRecent"></div>
+  </div>
+
+</div>
+</main>
+
+<footer id="footTxt">20秒ごとに自動更新 / 最終取得 --:--:-- / このページは見るだけ（記録はSMの画面から）/ status v1</footer>
+
+</div>
+
+<script>
+var APP_VERSION = 'status v1';
+
+// ===== 状態（同期設定のみ保存。それ以外は毎回作り直す） =====
+var KEY = 'sm-status-v1';
+var S = { startDate:'2026-09-19', cfg:{warn:15, esc:30, silence:30, change:15}, sync:{url:'', key:''} };
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify({sync:S.sync})); }catch(e){} }
+function load(){
+  try{
+    var raw = localStorage.getItem(KEY);
+    if(raw){
+      var o = JSON.parse(raw);
+      if(o && o.sync){ S.sync.url = o.sync.url||''; S.sync.key = o.sync.key||''; }
+    }
+  }catch(e){}
+}
+function syncOn(){ return !!(S.sync && S.sync.url && S.sync.key); }
+
+// ===== 以下、sm.html v12 からそのままコピー（改変禁止） =====
+function parseT(s){
+  var m = String(s).trim().match(/^(\d{1,2}):(\d{2})$/);
+  if(!m) return null;
+  return parseInt(m[1],10)*60 + parseInt(m[2],10);
+}
+function fmt(mins){
+  if(mins===null||mins===undefined||isNaN(mins)) return '--:--';
+  var m = ((mins % 1440) + 1440) % 1440;
+  return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
+}
+// 会期の初日00:00を基準にした「通し分」。49時間連続でも正しく計算するために日付を見る。
+function nowMin(){
+  var d = new Date();
+  var n = d.getHours()*60 + d.getMinutes();
+  if(S.startDate){
+    var p = S.startDate.split('-');
+    var s = new Date(+p[0], (+p[1])-1, +p[2]);
+    var t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    var days = Math.round((t - s)/86400000);
+    if(days >= 0 && days <= 6) return days*1440 + n;
+  }
+  if(n < 360) n += 1440;   // 初日未設定時のフォールバック
+  return n;
+}
+// 本番前日かどうか（今日のローカル日付 < S.startDate）。nowMin()と同じ日付計算。
+function preEvent(){
+  if(!S.startDate) return false;
+  var d = new Date();
+  var p = S.startDate.split('-');
+  var s = new Date(+p[0], (+p[1])-1, +p[2]);
+  var t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  var days = Math.round((t - s)/86400000);
+  return days < 0;
+}
+function fmtD(mins){
+  if(mins===null||mins===undefined||isNaN(mins)) return '--:--';
+  var day = Math.floor(mins/1440);
+  var hm = fmt(mins);
+  if(!S.startDate || day<=0) return hm;
+  var p = S.startDate.split('-');
+  var s = new Date(+p[0], (+p[1])-1, +p[2]); s.setDate(s.getDate()+day);
+  return (s.getMonth()+1)+'/'+s.getDate()+' '+hm;
+}
+function sgn(n){ return (n>0?'+':'') + n; }
+
+// ===== parse timetable =====
+function parseTT(txt){
+  var stages = [], cur = null;
+  txt.split(/\n/).forEach(function(raw){
+    var line = raw.trim();
+    if(!line) return;
+    if(line.charAt(0)==='#'){ cur = {name: line.slice(1).trim() || 'ステージ', acts:[]}; stages.push(cur); return; }
+    if(!cur){ cur = {name:'DAY1', acts:[]}; stages.push(cur); }
+    var anchor = false;
+    if(line.charAt(0)==='!'){ anchor = true; line = line.slice(1).trim(); }
+    var m = line.match(/^(\d{1,2}:\d{2})\s*(?:[-–~〜]\s*(\d{1,2}:\d{2}))?\s+(.+)$/);
+    if(!m) return;
+    cur.acts.push({start:parseT(m[1]), end:m[2]?parseT(m[2]):null, name:m[3].trim(), aStart:null, aEnd:null, anchor:anchor});
+  });
+  if(!stages.length) return null;
+  // 深夜跨ぎ正規化 + 終了時刻の補完
+  stages.forEach(function(st){
+    var off = 0, prev = -1;
+    st.acts.forEach(function(a){
+      if(a.start < prev) off += 1440;
+      a.start += off; prev = a.start - off;
+      if(a.end !== null){ a.end += off; if(a.end <= a.start) a.end += 1440; }
+    });
+    st.acts.sort(function(x,y){return x.start-y.start;});
+    st.acts.forEach(function(a,i){
+      if(a.end === null) a.end = (i+1 < st.acts.length) ? st.acts[i+1].start : a.start + 60;
+    });
+  });
+  return stages;
+}
+
+var REAL_TT =
+"#メインステージ 9/19-21\n"+
+"14:00 KANDA SAORI with AKIRA IKEDA\n"+
+"15:00 YØSHIKI\n"+
+"16:00 Tom monkey\n"+
+"17:00 SHIVA\n"+
+"18:00 TSUNE\n"+
+"19:00 SIONA 🇰🇷\n"+
+"20:00 Poo-chii\n"+
+"21:00 PiERO\n"+
+"22:00 ◆Groove Box live\n"+
+"23:00 KAZYA\n"+
+"00:00 WATARU\n"+
+"01:00 ◆Xipe totecs live\n"+
+"02:00 KANKEEY\n"+
+"03:00 ◆RGB live\n"+
+"04:00 Suma 🇹🇼\n"+
+"05:00 YANMAH\n"+
+"06:00 ◆Revival.Revival live\n"+
+"07:00 SAEKI\n"+
+"08:00 AYAKA\n"+
+"09:00 PINKY\n"+
+"10:00 YUYA\n"+
+"11:00 YAMATO\n"+
+"12:00 PEPE\n"+
+"13:00 ◆MIROK live ★次もlive\n"+
+"14:00 ◆Okapi 🇮🇹 live\n"+
+"!15:00-16:00 MUSIC STOP ← 唯一の音無し\n"+
+"16:00 RYOKAN\n"+
+"17:00 ◆Migdolor 🇮🇱 live ★次もlive\n"+
+"18:00 ◆Nomolos 🇮🇱 live\n"+
+"19:00 C!AO\n"+
+"20:00 ◆SUZI live\n"+
+"21:00 🔥YUKI.T\n"+
+"22:00 ◆VARANOID 🇫🇷 live\n"+
+"23:00 HISA\n"+
+"00:00 BuzZ\n"+
+"01:00-02:30 ◆Fungas Funk 🇪🇸 live\n"+
+"02:30 FUMI\n"+
+"03:30 ◆KATAK 🇭🇰 live\n"+
+"04:30 MI-BOU\n"+
+"05:30 YUKI\n"+
+"06:30 DAICHI\n"+
+"07:30 ◆KAIZAN live\n"+
+"08:30 ANNY\n"+
+"09:30 MARIHO\n"+
+"10:30 ◆SLUM live\n"+
+"11:30 HATTA\n"+
+"12:30 ◆Spectra Sonics live ★次もlive\n"+
+"13:30-15:00 ◆Aven7 🇧🇷 live";
+
+function anchorCarry(a, dIn){
+  if(a.aEnd !== null) return a.aEnd - a.end;                 // 実績優先
+  var len = a.end - a.start;
+  var dStart = (a.aStart !== null) ? (a.aStart - a.start) : dIn;
+  return Math.max(0, dStart - len);
+}
+function delayAt(st, idx){
+  var d = 0;
+  for(var i=0;i<idx && i<st.acts.length;i++){
+    var a = st.acts[i];
+    if(a.anchor){ d = anchorCarry(a, d); continue; }   // サイレントタイムで吸収
+    if(a.aEnd !== null) d = a.aEnd - a.end;
+    else if(a.aStart !== null) d = a.aStart - a.start;
+  }
+  return d;
+}
+function stageDelay(st){ return delayAt(st, st.acts.length); }
+// 「いま」の押し。サイレントタイム以降のリセットに引きずられないよう、進行中アクト基準で見る。
+function curDelay(st){
+  var i = activeIdx(st);
+  return delayAt(st, i < 0 ? st.acts.length : i + (st.acts[i].aStart !== null ? 1 : 0));
+}
+function predict(st, ai){
+  var a = st.acts[ai];
+  var d = delayAt(st, ai);
+  var s = (a.aStart!==null? a.aStart : a.start + d);
+  // anchor の終了予定は「押しを吸収した後」の時刻（枠内なら予定どおり 16:00）
+  var e = (a.aEnd!==null? a.aEnd : (a.anchor ? a.end + anchorCarry(a, d) : a.end + d));
+  return {s:s, e:e, shifted: (a.aStart===null && d!==0), d:d};
+}
+// 現在対象アクト: 未終了の最初のアクト
+function activeIdx(st){
+  for(var i=0;i<st.acts.length;i++){ if(st.acts[i].aEnd === null) return i; }
+  return -1;
+}
+// 次のサイレントタイムまでの押し（そこでリセットされる）
+function nextAnchor(st){
+  var i = activeIdx(st); if(i<0) return -1;
+  for(var k=i;k<st.acts.length;k++){ if(st.acts[k].anchor) return k; }
+  return -1;
+}
+function actState(st, a, i){
+  if(a.aEnd !== null) return 'done';
+  if(a.aStart !== null) return 'live';
+  return (i === activeIdx(st)) ? 'next' : 'wait';
+}
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function b64dec(s){
+  s=s.replace(/-/g,'+').replace(/_/g,'/');
+  while(s.length%4) s+='=';
+  return decodeURIComponent(escape(atob(s)));
+}
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+// GASを呼ぶ。CORSで読めない環境では JSONP に自動フォールバック
+function gas(params){
+  return new Promise(function(resolve,reject){
+    var q=Object.keys(params).map(function(k){return k+'='+encodeURIComponent(params[k]);}).join('&');
+    var base=S.sync.url + (S.sync.url.indexOf('?')<0?'?':'&');
+    fetch(base+q,{method:'GET'})
+      .then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.text(); })
+      .then(function(t){ resolve(t); })
+      .catch(function(){
+        var cb='__cb'+uid();
+        var s=document.createElement('script');
+        var t=setTimeout(function(){ cleanup(); reject(new Error('timeout')); },12000);
+        function cleanup(){ clearTimeout(t); try{delete window[cb];}catch(e){window[cb]=undefined;} if(s.parentNode) s.parentNode.removeChild(s); }
+        window[cb]=function(v){ cleanup(); resolve(v); };
+        s.onerror=function(){ cleanup(); reject(new Error('jsonp')); };
+        s.src=base+q+'&callback='+cb;
+        document.body.appendChild(s);
+      });
+  });
+}
+// feedColor/feedLabel（sm.html と同じ色・ラベル）
+function feedColor(k){
+  return k==='call'?'var(--bad)':k==='log'?'var(--warn)':k==='reset'?'var(--bad)':k==='reject'?'var(--bad)':
+         k==='role'?'var(--live)':'var(--acc)';
+}
+function feedLabel(k){
+  return {stamp:'打刻', log:'トラブル', logdel:'記録削除', call:'呼び出し', role:'担当', reset:'リセット', reject:'送信拒否'}[k]||k;
+}
+// ===== コピーここまで =====
+
+// ===== 共有リンクの受け取り（sm.html の readSetupLink と同じ処理：受け取って保存、ハッシュは消す） =====
+function readSetupLink(){
+  var m=(location.hash||'').match(/[#&]s=([^&]+)/);
+  if(!m) return false;
+  try{
+    var o=JSON.parse(b64dec(m[1]));
+    if(!o.u||!o.k) return false;
+    S.sync.url = o.u; S.sync.key = o.k;
+    save();
+    try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){ location.hash=''; }
+    return true;
+  }catch(e){ return false; }
+}
+
+// ===== イベントから状態を毎回作り直す（差分カーソルは持たない） =====
+var STATE = { stages: parseTT(REAL_TT), logs:[], deletedLogs:[], roleDev:'', feed:[], calls:[], lastOk:0, lastErr:false };
+
+function applyAll(events){
+  var stages = parseTT(REAL_TT);
+  var st = stages[0];
+  var logs = [], deletedLogs = [], roleDev = '', feed = [], calls = [];
+  events.slice().sort(function(a,b){ return (a.seq||0)-(b.seq||0); }).forEach(function(ev){
+    var d = null;
+    try{ d = JSON.parse(ev.data); }catch(e){ d = null; }
+    if(ev.kind==='stamp' && d){
+      var a = st.acts[d.i];
+      if(a && (!d.name || a.name===d.name)) a[d.f] = d.v;
+    } else if(ev.kind==='log' && d && d.uid){
+      if(deletedLogs.indexOf(d.uid)<0 && !logs.some(function(l){return l.uid===d.uid;})){
+        var entry = {}; for(var k in d){ entry[k]=d[k]; }
+        entry.dev = ev.dev||'';
+        logs.push(entry);
+      }
+    } else if(ev.kind==='logdel' && d && d.uid){
+      if(deletedLogs.indexOf(d.uid)<0) deletedLogs.push(d.uid);
+      logs = logs.filter(function(l){ return l.uid!==d.uid; });
+    } else if(ev.kind==='reset'){
+      var sc = (d && d.scope) || 'stamps';
+      st.acts.forEach(function(a2){ a2.aStart=null; a2.aEnd=null; });
+      if(sc==='all'){ logs=[]; deletedLogs=[]; }
+    } else if(ev.kind==='role' && d && d.dev){
+      roleDev = d.dev;
+    } else if(ev.kind==='call' && d){
+      calls.push({seq:ev.seq, type:d.type, ts:ev.ts||'', dev:ev.dev||''});
+    }
+    feed.push({seq:ev.seq, kind:ev.kind, dev:ev.dev||'', note:ev.note||'', ts:String(ev.ts||'')});
+  });
+  STATE.stages = stages;
+  STATE.logs = logs;
+  STATE.deletedLogs = deletedLogs;
+  STATE.roleDev = roleDev;
+  STATE.feed = feed;
+  STATE.calls = calls;
+}
+
+function pullAll(){
+  if(!syncOn() || pullAll._busy) return;
+  pullAll._busy = true;
+  gas({key:S.sync.key, op:'pull', since:0})
+    .then(function(t){
+      pullAll._busy = false;
+      var r; try{ r = (typeof t==='string') ? JSON.parse(t) : t; }catch(e){ r = null; }
+      if(!r || !r.ok){ STATE.lastErr = true; renderHeader(); return; }
+      applyAll(r.events||[]);
+      STATE.lastOk = Date.now();
+      STATE.lastErr = false;
+      renderAll();
+    })
+    .catch(function(){
+      pullAll._busy = false;
+      STATE.lastErr = true;
+      renderHeader();
+    });
+}
+
+// ===== 表示 =====
+function fmtClockTime(d){
+  function pad(n){ return String(n).length<2 ? '0'+n : String(n); }
+  return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+}
+function renderHeader(){
+  var now = new Date();
+  var c = document.getElementById('clock'); if(c) c.textContent = fmt(now.getHours()*60+now.getMinutes());
+  var el = document.getElementById('updTag'); if(!el) return;
+  if(!STATE.lastOk){ el.textContent='● 更新できていません'; el.className='sub bd'; return; }
+  var m = Math.floor((Date.now()-STATE.lastOk)/60000);
+  if(m>5){ el.textContent='● 更新できていません'; el.className='sub bd'; }
+  else if(m>2){ el.textContent='● 更新 '+m+'分前'; el.className='sub wr'; }
+  else { el.textContent='● 更新 たった今'; el.className='sub ok'; }
+}
+
+function row3Text(st){
+  var li = st.acts.length-1, last = st.acts[li];
+  var an = nextAnchor(st);
+  if(an>=0){
+    var carry = anchorCarry(st.acts[an], delayAt(st,an));
+    return 'MUSIC STOP 開始見込み ' + fmtD(predict(st,an).s) + '（予定 ' + fmtD(st.acts[an].start) + '）→ ' +
+      (carry>0 ? '枠で吸収しきれず 以降 '+sgn(carry)+'分 持ち越し' : '以降リセット');
+  }
+  return '最終 ' + last.name + ' 終了見込み ' + fmtD(predict(st,li).e) + '（予定 ' + fmtD(last.end) + '）';
+}
+
+function renderIma(){
+  var st = STATE.stages[0];
+  var i = activeIdx(st);
+  var pillEl = document.getElementById('pill');
+  var labelEl = document.getElementById('row1Label');
+  var subLabelEl = document.getElementById('row1SubLabel');
+  var valEl = document.getElementById('row1Val');
+  var targetEl = document.getElementById('row1Target');
+  var row2El = document.getElementById('row2');
+  var row3El = document.getElementById('row3');
+  var d = 0;
+
+  if(preEvent()){
+    pillEl.textContent = '本番前（9/19 14:00 開始）';
+    pillEl.className = 'pill pill-gray';
+    labelEl.textContent = '🧪 本番前です';
+    subLabelEl.textContent = '';
+    valEl.textContent = '';
+    valEl.style.color = 'var(--tx2)';
+    targetEl.textContent = '9/19 14:00 開始予定・いまは練習用の打刻が入ることがあります';
+    row2El.classList.add('hide');
+    row3El.classList.add('hide');
+  } else if(i<0){
+    pillEl.textContent = '終演';
+    pillEl.className = 'pill pill-gray';
+    labelEl.textContent = '✓ 終演';
+    subLabelEl.textContent = '';
+    valEl.textContent = '';
+    targetEl.textContent = '全アクト終了';
+    row2El.classList.add('hide');
+    row3El.classList.add('hide');
+  } else {
+    d = curDelay(st);
+    var ad = Math.abs(d);
+    var txt = d===0 ? '定刻' : ('押し '+sgn(d)+'分');
+    if(ad < S.cfg.warn){ pillEl.textContent = txt; pillEl.className = 'pill pill-ok'; }
+    else if(ad < S.cfg.esc){ pillEl.textContent = txt; pillEl.className = 'pill pill-wr'; }
+    else { pillEl.textContent = txt + ' ─ 統括判断'; pillEl.className = 'pill pill-bd'; }
+
+    var a = st.acts[i];
+    var now = nowMin();
+    if(a.aStart !== null){
+      var p = predict(st,i);
+      var rem = p.e - now;
+      if(a.anchor){
+        labelEl.textContent = '⏸ MUSIC STOP 中';
+        subLabelEl.textContent = '再開まで';
+      } else {
+        labelEl.textContent = '▶ 本番中　'+a.name;
+        subLabelEl.textContent = '残り';
+      }
+      valEl.textContent = (rem<0?'+':'')+Math.floor(Math.abs(rem)/60)+':'+String(Math.abs(rem)%60).padStart(2,'0');
+      valEl.style.color = rem<0 ? 'var(--bad)' : 'var(--tx)';
+      targetEl.textContent = (a.anchor?'再開予定 ':'終了予定 ')+fmt(p.e);
+    } else {
+      var prev = (i>0) ? st.acts[i-1] : null;
+      if(prev && prev.aEnd !== null){
+        var el2 = now - prev.aEnd;
+        labelEl.textContent = '🔧 転換中 → '+a.name;
+        subLabelEl.textContent = '経過';
+        valEl.textContent = Math.floor(el2/60)+':'+String(Math.max(0,el2)%60).padStart(2,'0');
+        valEl.style.color = el2 > S.cfg.change ? 'var(--bad)' : 'var(--tx)';
+        targetEl.textContent = '目安 '+S.cfg.change+'分';
+      } else {
+        var p2 = predict(st,i);
+        var to = p2.s - now;
+        labelEl.textContent = '⏳ 次は '+a.name;
+        subLabelEl.textContent = '開始まで';
+        valEl.textContent = (to<0?'+':'')+Math.floor(Math.abs(to)/60)+':'+String(Math.abs(to)%60).padStart(2,'0');
+        valEl.style.color = to<0 ? 'var(--bad)' : 'var(--tx)';
+        targetEl.textContent = '開始予定 '+fmt(p2.s);
+      }
+    }
+
+    // row2：直近の未開始枠
+    var nextIdx = i + (a.aStart!==null ? 1 : 0);
+    if(nextIdx < st.acts.length){
+      var na = st.acts[nextIdx];
+      var pn = predict(st, nextIdx);
+      row2El.textContent = '次　'+na.name+'　'+fmt(na.start) + (pn.s!==na.start ? ' → 見込み '+fmt(pn.s) : '');
+      row2El.classList.remove('hide');
+    } else {
+      row2El.classList.add('hide');
+    }
+
+    if(d!==0){
+      row3El.textContent = row3Text(st);
+      row3El.classList.remove('hide');
+    } else {
+      row3El.classList.add('hide');
+    }
+  }
+
+  // row4
+  document.getElementById('row4a').textContent = '記録担当　'+(STATE.roleDev || '未設定');
+  var lastEv = (STATE.feed && STATE.feed.length) ? STATE.feed[STATE.feed.length-1] : null;
+  var row4b = document.getElementById('row4b');
+  if(lastEv){
+    var tm = (lastEv.ts||'').match(/\d{1,2}:\d{2}/);
+    row4b.textContent = '最終の記録　'+(tm?tm[0]:'—')+'（'+(lastEv.dev||'—')+'）';
+  } else {
+    row4b.textContent = '最終の記録　—';
+  }
+}
+
+function cleanName(name){
+  var s = String(name||'');
+  s = s.replace(/★次もlive/g,'');
+  s = s.replace(/^◆/,'');
+  s = s.replace(/\s*live\s*$/,'');
+  s = s.replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu,'');
+  s = s.replace(/\s+/g,' ').trim();
+  return s;
+}
+
+function renderChui(){
+  var st = STATE.stages[0];
+  var rows = [];
+  var now = Date.now();
+
+  var calls = (STATE.calls||[]).slice().sort(function(a,b){ return (a.seq||0)-(b.seq||0); });
+  calls.forEach(function(c, idx){
+    if(c.type!=='sound' && c.type!=='drink') return;
+    var doneAfter = calls.slice(idx+1).some(function(x){ return x.type==='done'; });
+    if(doneAfter) return;
+    var em = Math.floor((now - Date.parse(c.ts))/60000);
+    if(isNaN(em) || em>180) return;
+    var label = em<1 ? 'たった今' : em+'分前';
+    if(c.type==='sound'){
+      rows.push({text:'🔊 演者から「音のトラブル」呼び出し　'+label+'　未対応', color:'var(--bad)', w:1});
+    } else {
+      rows.push({text:'🥤 ドリンク呼び出し　'+label+'　未対応', color:'var(--acc)', w:2});
+    }
+  });
+
+  if(!preEvent()){
+    var i = activeIdx(st);
+    if(i>=0){
+      var d = curDelay(st);
+      if(Math.abs(d) >= S.cfg.esc){
+        rows.push({text:'🔴 押しが30分を超えています → 統括判断（順番変更・尺カット）', color:'var(--bad)', w:3});
+      }
+    }
+    if(STATE.feed && STATE.feed.length){
+      var last = STATE.feed[STATE.feed.length-1];
+      var lm = Math.floor((now - Date.parse(last.ts))/60000);
+      if(!isNaN(lm) && lm > S.cfg.silence){
+        rows.push({text:'⚠ 最終の記録から '+lm+'分 動きがありません', color:'var(--warn)', w:4});
+      }
+    }
+  }
+
+  var m = {};
+  (STATE.logs||[]).forEach(function(l){ if(l.unit) m[l.unit]=(m[l.unit]||0)+1; });
+  Object.keys(m).filter(function(k){ return m[k]>=3; })
+    .sort(function(a,b){ return m[b]-m[a]; })
+    .forEach(function(k){
+      rows.push({text:'⚠ '+k+' でトラブル '+m[k]+'件目 → 交換を検討', color:'var(--warn)', w:5});
+    });
+
+  var nowM = nowMin();
+  for(var k2=0;k2<st.acts.length;k2++){
+    var act = st.acts[k2];
+    if(act.name.indexOf('★次もlive')<0) continue;
+    var pe = predict(st,k2).e;
+    if(pe>=nowM && pe<=nowM+30){
+      var nextAct = st.acts[k2+1];
+      rows.push({text:'⚠ ライブ→ライブの連続転換が30分以内に来ます：'+cleanName(act.name)+' → '+(nextAct?cleanName(nextAct.name):''), color:'var(--warn)', w:6});
+      break;
+    }
+  }
+
+  var card = document.getElementById('cardChui');
+  var listEl = document.getElementById('chuiList');
+  if(!rows.length){ card.classList.add('hide'); return; }
+  card.classList.remove('hide');
+  rows.sort(function(a,b){ return a.w-b.w; });
+  listEl.innerHTML = rows.map(function(r){
+    return '<div class="chuirow" style="color:'+r.color+'">'+esc(r.text)+'</div>';
+  }).join('');
+}
+
+function flowRow(st, idx, curI){
+  var a = st.acts[idx];
+  var p = predict(st, idx);
+  var shifted = (p.s !== a.start);
+  var ftHtml = esc(fmt(a.start)) + (shifted ? ('<br><span class="ft2">→見込み '+esc(fmt(p.s))+'</span>') : '');
+  var live = (idx===curI && a.aStart!==null);
+  var nextHi = false;
+  if(curI>=0){
+    var dispNext = curI + ((st.acts[curI] && st.acts[curI].aStart!==null) ? 1 : 0);
+    if(idx===dispNext) nextHi = true;
+  }
+  var cls = 'frow' + (live?' live':'') + (nextHi?' next':'') + (a.anchor?' anchor':'');
+  return '<div class="'+cls+'"><div class="ft">'+ftHtml+'</div><div class="fn">'+esc(a.name)+'</div></div>';
+}
+
+var FLOW_EXPANDED = false;
+function renderNagare(){
+  var st = STATE.stages[0];
+  var i = activeIdx(st);
+  var total = st.acts.length;
+  var listEl = document.getElementById('flowList');
+  var doneEl = document.getElementById('doneSummary');
+  var btn = document.getElementById('flowToggleBtn');
+  var rowsHtml = '';
+
+  if(FLOW_EXPANDED){
+    for(var k=0;k<total;k++) rowsHtml += flowRow(st,k,i);
+    doneEl.classList.add('hide');
+  } else {
+    var startIdx = (i<0) ? total : i;
+    if(startIdx>0){
+      var first = st.acts[0], last = st.acts[startIdx-1];
+      doneEl.textContent = '済み ' + startIdx + '枠（' + fmt(first.start)+' '+first.name+' … '+fmt(last.start)+' '+last.name+'）';
+      doneEl.classList.remove('hide');
+    } else {
+      doneEl.classList.add('hide');
+    }
+    var endIdx = Math.min(total, startIdx+9);
+    for(var k2=startIdx;k2<endIdx;k2++) rowsHtml += flowRow(st,k2,i);
+  }
+  listEl.innerHTML = rowsHtml || '<div class="pad note">'+(i<0?'全アクト終了':'アクトがありません')+'</div>';
+  btn.textContent = FLOW_EXPANDED ? '折りたたむ' : ('全部見る（'+total+'枠）');
+  btn.onclick = function(){ FLOW_EXPANDED = !FLOW_EXPANDED; renderNagare(); };
+}
+
+function renderUgoki(){
+  var el = document.getElementById('feedList');
+  var fd = (STATE.feed||[]).filter(function(x){ return x.note; });
+  if(!fd.length){ el.innerHTML='<div class="pad note">まだ動きはありません</div>'; return; }
+  el.innerHTML = fd.slice().reverse().slice(0,12).map(function(x){
+    var t=(x.ts||'').match(/\d{1,2}:\d{2}/);
+    return '<div class="logitem"><div class="mt">'+(t?esc(t[0]):'')+'　'+esc(x.dev)+'</div>'+
+      '<b style="color:'+feedColor(x.kind)+'">['+feedLabel(x.kind)+']</b> '+esc(x.note)+'</div>';
+  }).join('');
+}
+
+function renderTrouble(){
+  var logs = STATE.logs||[];
+  document.getElementById('troubleCount').textContent = '合計 '+logs.length+'件';
+  var m = {};
+  logs.forEach(function(l){ if(l.unit) m[l.unit]=(m[l.unit]||0)+1; });
+  var keys = Object.keys(m).sort(function(a,b){ return m[b]-m[a]; });
+  var us = document.getElementById('unitStats');
+  us.innerHTML = keys.map(function(k){
+    return '<div class="ustat'+(m[k]>=3?' alert':'')+'"><span>'+esc(k)+'</span><b>'+m[k]+'件'+(m[k]>=3?' ← 交換を検討':'')+'</b></div>';
+  }).join('');
+  var rec = document.getElementById('troubleRecent');
+  if(!logs.length){ rec.innerHTML = '<div class="pad note">まだ記録はありません</div>'; return; }
+  var recent = logs.slice().sort(function(a,b){ return (a.at||0)-(b.at||0); }).slice(-5).reverse();
+  rec.innerHTML = recent.map(function(l){
+    var col = l.sev===1?'var(--bad)':l.sev===2?'var(--warn)':'var(--acc)';
+    return '<div class="logitem"><div class="mt">'+esc(l.time||'')+'　'+esc(l.unit||'')+'</div>'+
+      '<b style="color:'+col+'">'+esc(l.event||'')+'</b>'+(l.impact?' <span class="note">+'+esc(l.impact)+'分</span>':'')+'</div>';
+  }).join('');
+}
+
+function renderFooter(){
+  var el = document.getElementById('footTxt');
+  var t = STATE.lastOk ? fmtClockTime(new Date(STATE.lastOk)) : '--:--:--';
+  el.textContent = '20秒ごとに自動更新 / 最終取得 '+t+' / このページは見るだけ（記録はSMの画面から）/ status v1';
+}
+
+function renderAll(){
+  renderHeader();
+  renderIma();
+  renderChui();
+  renderNagare();
+  renderUgoki();
+  renderTrouble();
+  renderFooter();
+}
+
+function tick(){
+  renderHeader();
+  if(syncOn()) renderIma();
+}
+
+// ===== 昼夜テーマ（保存はしない。開くたびに夜から） =====
+function toggleTheme(){
+  var day = document.body.classList.toggle('day');
+  var b = document.getElementById('themeBtn'); if(b) b.textContent = day ? '☾' : '☀';
+  var m = document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute('content', day ? '#ffffff' : '#0b0d10');
+}
+
+// ===== 起動 =====
+load();
+readSetupLink();
+if(syncOn()){
+  document.getElementById('noSetup').classList.add('hide');
+  document.getElementById('dash').classList.remove('hide');
+  renderAll();
+  pullAll();
+  setInterval(pullAll, 20000);
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState==='visible') pullAll();
+  });
+} else {
+  document.getElementById('noSetup').classList.remove('hide');
+  document.getElementById('dash').classList.add('hide');
+}
+setInterval(tick, 1000);
+</script>
+</body>
+</html>

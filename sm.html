@@ -352,6 +352,7 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
               <button id="syToggle" onclick="toggleSync()">同期オン</button>
             </div>
             <button class="g" onclick="makeSetupLink()" style="width:100%;margin-top:8px">配布用リンクを作る（SMに送る）</button>
+            <button class="p" onclick="makeStatusLink()" style="width:100%;margin-top:8px">現状ページのリンクを作る（オーガナイザー用）</button>
           </div>
         </div>
 
@@ -872,7 +873,7 @@ var MANUAL = [
 var S = {stages:[], logs:[], cur:0, mode:'lead', reports:[], lastRx:null, startDate:'2026-09-19',
   sync:{url:'',key:'',dev:'',last:0,outbox:[],on:true,lastOk:null}, roleDev:'', feed:[],
   cfg:{change:15, warn:15, esc:30, silence:30}};
-var APP_VERSION = 'v12';
+var APP_VERSION = 'v13';
 var KEY = 'sm-dash-v4';
 
 function save(){ try{localStorage.setItem(KEY, JSON.stringify(S));}catch(e){} }
@@ -1835,6 +1836,14 @@ function makeSetupLink(){
   var link=location.origin+location.pathname+'#s='+b64enc(JSON.stringify({u:S.sync.url,k:S.sync.key}));
   copy(link);
   el.textContent='配布用リンクをコピーしました。SMグループLINEに貼ってください（このリンクは外に出さないこと）';
+}
+function makeStatusLink(){
+  saveSync();
+  var el=document.getElementById('syResult');
+  if(!S.sync.url||!S.sync.key){ el.textContent='先に共有URLと合言葉を入れてください'; return; }
+  var link=location.origin+location.pathname.replace(/sm\.html$/,'status.html')+'#s='+b64enc(JSON.stringify({u:S.sync.url,k:S.sync.key}));
+  copy(link);
+  el.textContent='現状ページのリンクをコピーしました（見るだけのページ。関係者限定）';
 }
 
 // ===== モード / 報告 =====
