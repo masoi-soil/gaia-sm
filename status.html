@@ -242,7 +242,7 @@ footer{max-width:1200px;margin:0 auto;padding:20px 16px calc(16px + var(--sab));
 </div>
 
 <script>
-var APP_VERSION = 'status v4';
+var APP_VERSION = 'status v5';
 
 // ===== このページに共有設定を持たせる =====
 // 端末に何も入れなくても、URLを開いただけで中身が見えるようにするための既定値。
@@ -473,23 +473,21 @@ function b64dec(s){
 }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 // GASを呼ぶ。CORSで読めない環境では JSONP に自動フォールバック
+// GASは応答に10秒前後かかることがある。github.io から fetch() を投げると
+// CORSで必ず失敗し、その分だけ待たされてから JSONP に落ちる（＝約2倍待つ）ので、
+// このページは最初から JSONP で取りにいく。待ち時間も 25秒に伸ばしてある。
 function gas(params){
   return new Promise(function(resolve,reject){
     var q=Object.keys(params).map(function(k){return k+'='+encodeURIComponent(params[k]);}).join('&');
     var base=S.sync.url + (S.sync.url.indexOf('?')<0?'?':'&');
-    fetch(base+q,{method:'GET'})
-      .then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.text(); })
-      .then(function(t){ resolve(t); })
-      .catch(function(){
-        var cb='__cb'+uid();
-        var s=document.createElement('script');
-        var t=setTimeout(function(){ cleanup(); reject(new Error('timeout')); },12000);
-        function cleanup(){ clearTimeout(t); try{delete window[cb];}catch(e){window[cb]=undefined;} if(s.parentNode) s.parentNode.removeChild(s); }
-        window[cb]=function(v){ cleanup(); resolve(v); };
-        s.onerror=function(){ cleanup(); reject(new Error('jsonp')); };
-        s.src=base+q+'&callback='+cb;
-        document.body.appendChild(s);
-      });
+    var cb='__cb'+uid();
+    var el=document.createElement('script');
+    var tm=setTimeout(function(){ cleanup(); reject(new Error('timeout')); },25000);
+    function cleanup(){ clearTimeout(tm); try{delete window[cb];}catch(e){window[cb]=undefined;} if(el.parentNode) el.parentNode.removeChild(el); }
+    window[cb]=function(v){ cleanup(); resolve(v); };
+    el.onerror=function(){ cleanup(); reject(new Error('jsonp')); };
+    el.src=base+q+'&callback='+cb;
+    document.body.appendChild(el);
   });
 }
 // feedColor/feedLabel（sm.html と同じ色・ラベル）
