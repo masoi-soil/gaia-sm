@@ -124,12 +124,16 @@ input{width:100%;background:#0f1318;color:var(--tx);border:1px solid var(--line)
 <!-- 設定 -->
 <div id="cfg" onclick="if(event.target.id==='cfg')closeCfg()">
   <div class="sheet">
-    <h3>設定（SM用） <span style="font-size:12px;opacity:.55">call v3</span></h3>
+    <h3>設定（SM用） <span style="font-size:12px;opacity:.55">call v4</span></h3>
     <label>現在の演者名（任意）</label>
     <input id="inAct" placeholder="例: VARANOID">
     <label>ステージ名</label>
     <input id="inStage" placeholder="メインステージ">
 
+    <div class="note" style="margin-bottom:6px">
+      <b>下の2つは最初から入っています。</b>端末を差し替えても、このページを開くだけで使えます。
+      入力し直す必要はありません（変える時だけ触ってください）。
+    </div>
     <label>LINE通知の中継URL（GASのウェブアプリURL）</label>
     <input id="inGas" placeholder="https://script.google.com/macros/s/..../exec">
     <label>合言葉（中継スクリプトの SECRET_KEY と同じ文字列）</label>
@@ -156,6 +160,15 @@ input{width:100%;background:#0f1318;color:var(--tx);border:1px solid var(--line)
 
 <script>
 var KEY='sm-call-v2';
+
+// ===== このページに中継設定を持たせる =====
+// ブース端末が壊れて別の端末に差し替えるとき、設定リンクを探さなくても
+// このURLを開くだけで通知が飛ぶようにするための既定値。
+// 合言葉やGASのURLを変えたらここも変えること。
+var BUILTIN = {
+  u: 'https://script.google.com/macros/s/AKfycbwEUnnNUYXkplsEzy2T3DPs_U5BuXNG_1d-EVeDnoy3hJnCAXcjHzT5v5eC0Xx9h_F0Xg/exec',
+  k: 'gaia2026'
+};
 function b64dec(s){ s=s.replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4) s+='='; return decodeURIComponent(escape(atob(s))); }
 var SETUP=null;
 (function(){
@@ -167,6 +180,8 @@ var SETUP=null;
 })();
 var C={act:'',stage:'メインステージ',gas:'',key:'',logs:[]};
 try{var r=localStorage.getItem(KEY); if(r) C=Object.assign(C,JSON.parse(r));}catch(e){}
+// 保存も設定リンクも無い端末は、このページが持っている既定値で動く
+if((!C.gas || !C.key) && BUILTIN.u && BUILTIN.k){ C.gas=BUILTIN.u; C.key=BUILTIN.k; save(); }
 function save(){try{localStorage.setItem(KEY,JSON.stringify(C));}catch(e){}}
 
 var TYPE={
