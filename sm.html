@@ -765,15 +765,12 @@ var MANUAL = [
    '<b>③仮眠の窓が構造的にない。</b>シフトを組まないと物理的に破綻する。</p>'+
    '<p class="rd"><b>だから「押しは転換で吸収する」を1本目のうちから徹底する。</b>後半に持ち越すと戻す場所がない。</p>'},
 
-{t:'演者からの呼び出しボタン', k:'呼び出し 演者 ドリンク 音 ボタン ブース 通知',
- h:'<p>ブースに<b>呼び出し専用の端末を1台</b>置いています（別ファイル「演者用よびだしボタン」）。演者が演奏中に押せる大きなボタンが2つ。</p>'+
-   '<table class="mt"><tr><th>ボタン</th><th>意味</th></tr>'+
-   '<tr><td class="gr"><b>🥤 ドリンク</b><br>DRINK</td><td>飲み物が欲しい。急ぎではない</td></tr>'+
-   '<tr><td class="rd"><b>🔊 音のトラブル</b><br>SOUND ISSUE</td><td class="rd"><b>最優先。すぐブースへ。</b>モニター・音量・機材のどれか</td></tr></table>'+
-   '<p class="hl">押されると<b>画面全体が点滅します。</b>ドリンクは緑、音のトラブルは赤。<br>'+
+{t:'演者からの呼び出しボタン', k:'呼び出し 演者 ステマネ ドリンク 音 ボタン ブース 通知',
+ h:'<p>ブースに<b>呼び出し専用の端末を1台</b>置いています（別ファイル「演者用よびだしボタン」）。ボタンは<b>「📣 ステマネを呼ぶ」の1つだけ</b>で、用件の区別はありません。</p>'+
+   '<p class="hl">押されると<b>画面全体が赤くなって、フチがゆっくり光ります。</b><br>'+
    '<b>爆音のブースでは音は聞こえません。だから光で知らせます。</b>端末はSMから見える向きに立てておくこと。</p>'+
-   '<p>対応したら端末の<b>「SM対応中 / DONE」</b>を押して消してください。押すまで点滅し続けます。対応までにかかった時間も記録されます。</p>'+
-   '<p class="rd"><b>赤（音のトラブル）が出たら、他の作業を止めてブースへ。</b>演者が演奏中に手を離してボタンを押したということは、自分では解決できない状態です。</p>'+
+   '<p>対応したら端末の<b>「SM対応中 / DONE」</b>を押して消してください。押すまで光り続けます。対応までにかかった時間も記録されます。</p>'+
+   '<p class="rd"><b>光ったら他の作業を止めてブースへ。</b>演者が演奏中に手を離してボタンを押したということは、自分では解決できない状態です。用件は着いてから口頭で聞いてください。</p>'+
    '<p class="gr">SMが近くにいない時は、演者かスタッフが<b>「LINEでも知らせる」</b>を押せばLINEに飛びます。</p>'+
    '<p class="note">ボタンは日本語と英語を併記しています。海外アクトが9組いるため。</p>'},
 
@@ -873,7 +870,7 @@ var MANUAL = [
 var S = {stages:[], logs:[], cur:0, mode:'lead', reports:[], lastRx:null, startDate:'2026-09-19',
   sync:{url:'',key:'',dev:'',last:0,outbox:[],on:true,lastOk:null}, roleDev:'', feed:[],
   cfg:{change:15, warn:15, esc:30, silence:30}};
-var APP_VERSION = 'v13';
+var APP_VERSION = 'v14';
 var KEY = 'sm-dash-v4';
 
 function save(){ try{localStorage.setItem(KEY, JSON.stringify(S));}catch(e){} }
@@ -1784,7 +1781,7 @@ function applyEvent(ev){
   if(ev.kind==='call'){
     if(S.reports.some(function(r){return r.seq===ev.seq;})) return false;
     S.reports.push({kind:'T', seq:ev.seq, time:(ev.ts||'').slice(11,16), stage:'ブース',
-      unit:'演者呼び出し', event:(d.type==='sound'?'🔊 音のトラブル':d.type==='drink'?'🥤 ドリンク':'✅ 対応済み'),
+      unit:'演者呼び出し', event:(d.type==='sound'?'📣 ステマネ呼び出し':d.type==='drink'?'🥤 ドリンク':'✅ 対応済み'),
       impact:0, sev:(d.type==='sound'?1:d.type==='drink'?2:3), rx:nowMin()});
     S.lastRx=nowMin();
     return true;

@@ -37,19 +37,22 @@ body{margin:0;background:var(--bg);color:var(--tx);
 .big .ic{font-size:clamp(46px,15vh,86px);line-height:1}
 .big .ja{font-size:clamp(26px,5.2vh,40px);font-weight:900;letter-spacing:.02em}
 .big .en{font-size:clamp(14px,2.2vh,19px);font-weight:800;letter-spacing:.14em;opacity:.72}
-#bDrink{background:var(--drink)}
-#bSound{background:var(--sound);color:#1a0505}
+#bCall{background:var(--sound);color:#1a0505}
 .hint{text-align:center;color:var(--tx2);font-size:12px;padding-top:10px;line-height:1.5}
 
 /* ===== 呼び出し中（全画面アラート） ===== */
 #alert{position:fixed;inset:0;z-index:100;display:none;flex-direction:column;
   padding:calc(16px + var(--sat)) 16px calc(16px + var(--sab));text-align:center}
 #alert.on{display:flex}
-#alert.flash{animation:fl .55s steps(1,end) infinite}
-@keyframes fl{0%,100%{filter:brightness(1)}50%{filter:brightness(.42)}}
+/* 全画面のチカチカはやめ、フチだけをゆっくり光らせる */
+#alert::after{content:'';position:absolute;inset:0;pointer-events:none;
+  border:16px solid #fff;opacity:.14;box-shadow:inset 0 0 0 2px rgba(0,0,0,.30)}
+#alert.flash::after{animation:ring 2.4s ease-in-out infinite}
+@keyframes ring{0%,100%{opacity:.14}50%{opacity:.95}}
+@media (prefers-reduced-motion:reduce){#alert.flash::after{animation:none;opacity:.6}}
 .aTop{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#0b0d10}
 .aIc{font-size:clamp(56px,17vh,110px);line-height:1}
-.aJa{font-size:clamp(30px,6vh,48px);font-weight:900;line-height:1.2}
+.aJa{font-size:clamp(24px,4.8vh,38px);font-weight:900;line-height:1.2}
 .aEn{font-size:clamp(15px,2.4vh,21px);font-weight:800;letter-spacing:.12em;opacity:.75}
 .aSub{font-size:clamp(15px,2.4vh,20px);font-weight:800;opacity:.85;margin-top:6px}
 .aTime{font-size:clamp(38px,9vh,64px);font-weight:900;font-variant-numeric:tabular-nums;line-height:1}
@@ -91,18 +94,13 @@ input{width:100%;background:#0f1318;color:var(--tx);border:1px solid var(--line)
     <div class="now" id="nowAct"></div>
   </div>
   <div class="btns">
-    <button class="big" id="bDrink" onclick="fire('drink')">
-      <span class="ic">🥤</span>
-      <span class="ja">ドリンク</span>
-      <span class="en">DRINK</span>
-    </button>
-    <button class="big" id="bSound" onclick="fire('sound')">
-      <span class="ic">🔊</span>
-      <span class="ja">音のトラブル</span>
-      <span class="en">SOUND ISSUE</span>
+    <button class="big" id="bCall" onclick="fire('sound')">
+      <span class="ic">📣</span>
+      <span class="ja">ステマネを呼ぶ</span>
+      <span class="en">CALL STAGE MANAGER</span>
     </button>
   </div>
-  <div class="hint">押すと画面が光ってSMを呼びます<br>Tap to call the stage manager</div>
+  <div class="hint">押すと画面が光ってステマネを呼びます<br>Tap to call the stage manager</div>
 </div>
 
 <!-- 呼び出し中 -->
@@ -112,7 +110,7 @@ input{width:100%;background:#0f1318;color:var(--tx);border:1px solid var(--line)
     <div class="aJa" id="aJa">ドリンク</div>
     <div class="aEn" id="aEn">DRINK</div>
     <div class="aSub" id="aAct"></div>
-    <div class="aSub">SMを呼んでいます</div>
+    <div class="aSub">ステマネを呼んでいます</div>
     <div class="aTime" id="aTime">0:00</div>
     <div class="aSend" id="aSend"></div>
   </div>
@@ -126,7 +124,7 @@ input{width:100%;background:#0f1318;color:var(--tx);border:1px solid var(--line)
 <!-- 設定 -->
 <div id="cfg" onclick="if(event.target.id==='cfg')closeCfg()">
   <div class="sheet">
-    <h3>設定（SM用）</h3>
+    <h3>設定（SM用） <span style="font-size:12px;opacity:.55">call v2</span></h3>
     <label>現在の演者名（任意）</label>
     <input id="inAct" placeholder="例: VARANOID">
     <label>ステージ名</label>
@@ -140,13 +138,13 @@ input{width:100%;background:#0f1318;color:var(--tx);border:1px solid var(--line)
     <button class="sbtn pri" onclick="saveCfg()">保存</button>
     <button class="sbtn" onclick="testPush()">LINEに接続テスト</button>
     <div id="testResult" class="note"></div>
-    <button class="sbtn" onclick="testFire()">画面の点滅をテスト</button>
+    <button class="sbtn" onclick="testFire()">呼び出し画面をテスト</button>
     <div class="note">
       <b>置き方</b><br>
-      ブースに1台固定して、この画面を開いたままにしてください。押されると画面全体が点滅します。<br><br>
+      ブースに1台固定して、この画面を開いたままにしてください。押されると画面全体が色で覆われて、フチがゆっくり光ります。<br><br>
       <b>爆音のブースでは音は聞こえません。</b>だから光で知らせます。SMから見える向きに立てて置いてください。<br><br>
       <b>この端末にLINEは不要です。</b>電話番号もアカウントも要りません。Wi-Fiが繋がっていれば通知は飛びます。<br><br>
-      <b>LINE通知はWi-Fiが繋がっている時だけ動きます。</b>切れても画面の点滅は必ず動くので、そちらが本体です。<br><br>
+      <b>LINE通知はWi-Fiが繋がっている時だけ動きます。</b>切れても画面の表示は必ず出るので、そちらが本体です。<br><br>
       Wi-Fiの自動接続をオンにして、スリープ時もWi-Fiが切れない設定にしておいてください。<br><br>
       <b>「ホーム画面に追加」</b>すると全画面で起動して、誤操作で他の画面に飛びません。<br><br>
       画面が消えないよう、端末の自動ロックをオフにしてください。
@@ -173,7 +171,7 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(C));}catch(e){}}
 
 var TYPE={
   drink:{ic:'🥤', ja:'ドリンク',     en:'DRINK',       col:'#22c55e', txt:'#04140a'},
-  sound:{ic:'🔊', ja:'音のトラブル', en:'SOUND ISSUE', col:'#ef4444', txt:'#1a0505'}
+  sound:{ic:'📣', ja:'ステマネ呼び出し', en:'CALL SM', col:'#ef4444', txt:'#1a0505'}
 };
 var cur=null, t0=0, tick=null, actx=null, beeper=null, vib=null, wake=null;
 
@@ -254,7 +252,7 @@ function pushLine(kind, tryNo){
     });
 }
 function retryPush(){ if(cur) pushLine(cur, 0); }
-function testFire(){ closeCfg(); setTimeout(function(){fire('drink', 0, true);},250); }
+function testFire(){ closeCfg(); setTimeout(function(){fire('sound', 0, true);},250); }
 
 function startTick(){
   clearInterval(tick);
@@ -315,7 +313,7 @@ function clearCall(){
 function sendLineApp(){
   var t=TYPE[cur]||TYPE.drink;
   var msg='【'+(C.stage||'ステージ')+' '+hhmm()+'】\n'+
-          '演者からの呼び出し: '+t.ja+
+          'ブースから呼び出し: '+t.ja+
           (C.act?('\n演者: '+C.act):'')+
           '\nブースまでお願いします';
   var url='https://line.me/R/msg/text/?'+encodeURIComponent(msg);

@@ -93,8 +93,26 @@ main{padding:12px;max-width:1200px;margin:0 auto}
 #flowToggleBtn{display:block;width:100%;border-radius:0}
 
 /* 設定なし */
-.nsWrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center}
-.nsMsg{font-size:19px;font-weight:800;color:var(--tx2);line-height:1.8;max-width:340px}
+input{width:100%;background:var(--panel2);color:var(--tx);border:1px solid var(--line);border-radius:10px;
+  padding:11px 12px;font-family:inherit;font-size:15px;min-height:42px}
+button.g{background:var(--acc);border-color:var(--acc);color:#fff}
+body:not(.day) button.g{color:#062611}
+.nsWrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.nsCard{max-width:380px;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px}
+.nsTitle{font-size:20px;font-weight:800;margin-bottom:8px}
+.nsSub{color:var(--tx2);font-size:14px;line-height:1.7;margin-bottom:18px}
+.nsBlock{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.nsBlock.nsPrimary{border-color:var(--live)}
+.nsBlockTitle{font-weight:800;font-size:15px;margin-bottom:6px}
+.nsBlockNote{color:var(--tx2);font-size:12px;line-height:1.6}
+.nsBlockNote a{color:var(--live)}
+.nsLabel{display:block;color:var(--tx2);font-size:12px;margin-bottom:4px;font-weight:700}
+.nsFoot{color:var(--tx2);font-size:12px;text-align:center;margin-top:4px;line-height:1.6}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);max-width:92%;text-align:center;
+  background:var(--acc);color:#fff;padding:13px 20px;border-radius:14px;font-weight:800;font-size:15px;z-index:200;
+  opacity:0;transition:opacity .2s;pointer-events:none}
+body:not(.day) .toast{color:#062611}
+.toast.on{opacity:1}
 
 footer{max-width:1200px;margin:0 auto;padding:20px 16px calc(16px + var(--sab));text-align:center;
   color:var(--tx2);font-size:12px;line-height:1.8}
@@ -103,8 +121,38 @@ footer{max-width:1200px;margin:0 auto;padding:20px 16px calc(16px + var(--sab));
 <body>
 
 <div id="noSetup" class="hide">
-  <div class="nsWrap"><div class="nsMsg">統括からもらったリンクで開いてください</div></div>
+  <div class="nsWrap">
+    <div class="nsCard">
+      <div class="nsTitle">まだ設定が入っていません</div>
+      <div class="nsSub">このページは共有の設定（GASのURLと合言葉）が要ります。次のどれかで入ります。</div>
+
+      <div class="nsBlock nsPrimary">
+        <div class="nsBlockTitle">統括からもらったリンクをタップして開く</div>
+        <div class="nsBlockNote">リンクの末尾に #s=… が付いているものです。LINEで受け取ったら、そのリンクをもう一度タップしてください。</div>
+      </div>
+
+      <div class="nsBlock">
+        <button class="g" style="width:100%" onclick="useDashFallback()">SM画面（sm.html）の設定を使う</button>
+        <div class="nsBlockNote" id="fallbackMsg" style="margin-top:8px"></div>
+      </div>
+
+      <div class="nsBlock">
+        <button class="gh" style="width:100%" onclick="toggleManual()">手で入れる ＋</button>
+        <div id="manualBox" class="hide" style="margin-top:10px">
+          <label class="nsLabel">共有URL（GASのウェブアプリURL）</label>
+          <input id="manUrl" placeholder="https://script.google.com/macros/s/..../exec" style="margin-bottom:8px">
+          <label class="nsLabel">合言葉</label>
+          <input id="manKey" placeholder="合言葉を入力" style="margin-bottom:10px">
+          <button class="g" style="width:100%" onclick="saveManual()">保存して開く</button>
+        </div>
+      </div>
+
+      <div class="nsFoot">見るだけのページです。記録はSMの画面から。</div>
+    </div>
+  </div>
 </div>
+
+<div class="toast" id="toast"></div>
 
 <div id="dash" class="hide">
 
@@ -171,12 +219,12 @@ footer{max-width:1200px;margin:0 auto;padding:20px 16px calc(16px + var(--sab));
 </div>
 </main>
 
-<footer id="footTxt">20秒ごとに自動更新 / 最終取得 --:--:-- / このページは見るだけ（記録はSMの画面から）/ status v1</footer>
+<footer id="footTxt">20秒ごとに自動更新 / 最終取得 --:--:-- / このページは見るだけ（記録はSMの画面から）/ status v2</footer>
 
 </div>
 
 <script>
-var APP_VERSION = 'status v1';
+var APP_VERSION = 'status v3';
 
 // ===== 状態（同期設定のみ保存。それ以外は毎回作り直す） =====
 var KEY = 'sm-status-v1';
@@ -405,18 +453,47 @@ function feedLabel(k){
 }
 // ===== コピーここまで =====
 
-// ===== 共有リンクの受け取り（sm.html の readSetupLink と同じ処理：受け取って保存、ハッシュは消す） =====
+// ===== 共有リンクの受け取り（sm.html の readSetupLink と同じ処理：受け取って保存、印は消す） =====
+// #s=<b64> のハッシュに加えて ?s=<b64> のクエリも受け付ける（コピペ・LINE展開でハッシュが落ちることがあるため）。
+function stripQueryParam(search, key){
+  if(!search) return '';
+  var qs = search.replace(/^\?/,'');
+  if(!qs) return '';
+  var parts = qs.split('&').filter(function(p){ return p && p.indexOf(key+'=')!==0; });
+  return parts.length ? ('?'+parts.join('&')) : '';
+}
 function readSetupLink(){
-  var m=(location.hash||'').match(/[#&]s=([^&]+)/);
-  if(!m) return false;
+  var raw = null;
+  var hm = (location.hash||'').match(/[#&]s=([^&]+)/);
+  if(hm){ raw = hm[1]; }
+  else {
+    var qm = (location.search||'').match(/[?&]s=([^&]+)/);
+    if(qm) raw = qm[1];
+  }
+  if(!raw) return false;
   try{
-    var o=JSON.parse(b64dec(m[1]));
+    var o=JSON.parse(b64dec(raw));
     if(!o.u||!o.k) return false;
     S.sync.url = o.u; S.sync.key = o.k;
     save();
-    try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){ location.hash=''; }
+    var newSearch = stripQueryParam(location.search, 's');
+    try{ history.replaceState(null,'',location.pathname+newSearch); }catch(e){ location.hash=''; }
     return true;
   }catch(e){ return false; }
+}
+// 同一オリジンのフォールバック：sm.html（'sm-dash-v4'）が既に設定済みならそれを借りる
+function tryDashFallback(){
+  try{
+    var raw = localStorage.getItem('sm-dash-v4');
+    if(!raw) return false;
+    var o = JSON.parse(raw);
+    if(o && o.sync && o.sync.url && o.sync.key){
+      S.sync.url = o.sync.url; S.sync.key = o.sync.key;
+      save();
+      return true;
+    }
+  }catch(e){}
+  return false;
 }
 
 // ===== イベントから状態を毎回作り直す（差分カーソルは持たない） =====
@@ -636,7 +713,7 @@ function renderChui(){
     if(isNaN(em) || em>180) return;
     var label = em<1 ? 'たった今' : em+'分前';
     if(c.type==='sound'){
-      rows.push({text:'🔊 演者から「音のトラブル」呼び出し　'+label+'　未対応', color:'var(--bad)', w:1});
+      rows.push({text:'📣 ブースから「ステマネ呼び出し」　'+label+'　未対応', color:'var(--bad)', w:1});
     } else {
       rows.push({text:'🥤 ドリンク呼び出し　'+label+'　未対応', color:'var(--acc)', w:2});
     }
@@ -768,7 +845,7 @@ function renderTrouble(){
 function renderFooter(){
   var el = document.getElementById('footTxt');
   var t = STATE.lastOk ? fmtClockTime(new Date(STATE.lastOk)) : '--:--:--';
-  el.textContent = '20秒ごとに自動更新 / 最終取得 '+t+' / このページは見るだけ（記録はSMの画面から）/ status v1';
+  el.textContent = '20秒ごとに自動更新 / 最終取得 '+t+' / このページは見るだけ（記録はSMの画面から）/ status v2';
 }
 
 function renderAll(){
@@ -793,21 +870,67 @@ function toggleTheme(){
   var m = document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute('content', day ? '#ffffff' : '#0b0d10');
 }
 
-// ===== 起動 =====
-load();
-readSetupLink();
-if(syncOn()){
+function toast(m){
+  var t = document.getElementById('toast'); if(!t) return;
+  t.textContent = m; t.classList.add('on');
+  clearTimeout(t._t); t._t = setTimeout(function(){ t.classList.remove('on'); }, 2400);
+}
+
+// ===== 設定なし画面の操作 =====
+function toggleManual(){
+  var box = document.getElementById('manualBox');
+  box.classList.toggle('hide');
+}
+function saveManual(){
+  var url = document.getElementById('manUrl').value.trim();
+  var key = document.getElementById('manKey').value.trim();
+  if(!url || !key){ toast('共有URLと合言葉の両方を入れてください'); return; }
+  S.sync.url = url; S.sync.key = key;
+  save();
+  showDash();
+}
+function useDashFallback(){
+  var msg = document.getElementById('fallbackMsg');
+  if(tryDashFallback()){
+    if(msg) msg.textContent = '';
+    showDash();
+    toast('SM画面の設定を使いました');
+  } else if(msg){
+    msg.innerHTML = 'この端末のSM画面にまだ設定がありません。先に <a href="sm.html">sm.html</a> を配布リンクで開いてください';
+  }
+}
+
+function showDash(){
   document.getElementById('noSetup').classList.add('hide');
   document.getElementById('dash').classList.remove('hide');
   renderAll();
   pullAll();
-  setInterval(pullAll, 20000);
-  document.addEventListener('visibilitychange', function(){
-    if(document.visibilityState==='visible') pullAll();
-  });
-} else {
+  if(!showDash._started){
+    showDash._started = true;
+    setInterval(pullAll, 20000);
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState==='visible') pullAll();
+    });
+  }
+}
+function showNoConfig(){
   document.getElementById('noSetup').classList.remove('hide');
   document.getElementById('dash').classList.add('hide');
+}
+
+// ===== 起動 =====
+// 設定の優先順位: (a) #s=/?s= のリンク → (b) localStorage 'sm-status-v1' → (c) 同一端末の sm.html 設定 → (d) 手動入力を待つ
+load();
+var linkedNow = readSetupLink();
+var usedFallback = false;
+if(!syncOn()){
+  usedFallback = tryDashFallback();
+}
+if(syncOn()){
+  showDash();
+  if(usedFallback) toast('SM画面の設定を使いました');
+} else {
+  showNoConfig();
 }
 setInterval(tick, 1000);
 </script>
