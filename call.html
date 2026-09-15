@@ -52,7 +52,7 @@ body{margin:0;background:var(--bg);color:var(--tx);
 @media (prefers-reduced-motion:reduce){#alert.flash::after{animation:none;opacity:.6}}
 .aTop{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#0b0d10}
 .aIc{font-size:clamp(56px,17vh,110px);line-height:1}
-.aJa{font-size:clamp(24px,4.8vh,38px);font-weight:900;line-height:1.2}
+.aJa{font-size:clamp(21px,4.0vh,31px);font-weight:900;line-height:1.2}
 .aEn{font-size:clamp(15px,2.4vh,21px);font-weight:800;letter-spacing:.12em;opacity:.75}
 .aSub{font-size:clamp(15px,2.4vh,20px);font-weight:800;opacity:.85;margin-top:6px}
 .aTime{font-size:clamp(38px,9vh,64px);font-weight:900;font-variant-numeric:tabular-nums;line-height:1}
@@ -100,7 +100,7 @@ input{width:100%;background:#0f1318;color:var(--tx);border:1px solid var(--line)
       <span class="en">CALL STAGE MANAGER</span>
     </button>
   </div>
-  <div class="hint">押すと画面が光ってステマネを呼びます<br>Tap to call the stage manager</div>
+  <div class="hint">押すと画面が光ってステマネを呼びます（20秒で元に戻ります）<br>Tap to call the stage manager</div>
 </div>
 
 <!-- 呼び出し中 -->
@@ -110,21 +110,21 @@ input{width:100%;background:#0f1318;color:var(--tx);border:1px solid var(--line)
     <div class="aJa" id="aJa">ドリンク</div>
     <div class="aEn" id="aEn">DRINK</div>
     <div class="aSub" id="aAct"></div>
-    <div class="aSub">ステマネを呼んでいます</div>
-    <div class="aTime" id="aTime">0:00</div>
+    <div class="aSub" id="aSubAuto">ステマネのLINEに通知しました</div>
+    <div class="aTime" id="aTime">20秒</div>
     <div class="aSend" id="aSend"></div>
   </div>
   <div class="aBtns">
     <button class="line hide" id="btnRetry" onclick="retryPush()">LINEに再送する</button>
     <button class="line hide" id="btnLineApp" onclick="sendLineApp()">LINEアプリで送る</button>
-    <button onclick="clearCall()">SM対応中 / DONE</button>
+    <button class="hide" id="btnClose" onclick="forceClear()">閉じる / CLOSE</button>
   </div>
 </div>
 
 <!-- 設定 -->
 <div id="cfg" onclick="if(event.target.id==='cfg')closeCfg()">
   <div class="sheet">
-    <h3>設定（SM用） <span style="font-size:12px;opacity:.55">call v4</span></h3>
+    <h3>設定（SM用） <span style="font-size:12px;opacity:.55">call v5</span></h3>
     <label>現在の演者名（任意）</label>
     <input id="inAct" placeholder="例: VARANOID">
     <label>ステージ名</label>
@@ -145,7 +145,8 @@ input{width:100%;background:#0f1318;color:var(--tx);border:1px solid var(--line)
     <button class="sbtn" onclick="testFire()">呼び出し画面をテスト</button>
     <div class="note">
       <b>置き方</b><br>
-      ブースに1台固定して、この画面を開いたままにしてください。押されると画面全体が色で覆われて、フチがゆっくり光ります。<br><br>
+      ブースに1台固定して、この画面を開いたままにしてください。押されると画面全体が色で覆われて、フチがゆっくり光ります。
+      <b>20秒たつと自動で元の画面に戻ります。</b>「対応した」を押す操作はありません。<br><br>
       <b>爆音のブースでは音は聞こえません。</b>だから光で知らせます。SMから見える向きに立てて置いてください。<br><br>
       <b>この端末にLINEは不要です。</b>電話番号もアカウントも要りません。Wi-Fiが繋がっていれば通知は飛びます。<br><br>
       <b>LINE通知はWi-Fiが繋がっている時だけ動きます。</b>切れても画面の表示は必ず出るので、そちらが本体です。<br><br>
@@ -186,9 +187,12 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(C));}catch(e){}}
 
 var TYPE={
   drink:{ic:'🥤', ja:'ドリンク',     en:'DRINK',       col:'#22c55e', txt:'#04140a'},
-  sound:{ic:'📣', ja:'ステマネ呼び出し', en:'CALL SM', col:'#ef4444', txt:'#1a0505'}
+  sound:{ic:'📣', ja:'ステマネを呼びました', en:'STAGE MANAGER CALLED', col:'#ef4444', txt:'#1a0505'}
 };
 var cur=null, t0=0, tick=null, actx=null, beeper=null, vib=null, wake=null;
+// 押したら知らせるだけ。この秒数で自動的に元の画面に戻る（「対応した」を押す運用は廃止）
+var AUTO_MS = 20000;
+var autoTimer = null;
 
 function two(n){return (n<10?'0':'')+n;}
 function hhmm(){var d=new Date();return two(d.getHours())+':'+two(d.getMinutes());}
@@ -202,7 +206,7 @@ function fire(kind, resume, isTest){
     clearInterval(tick); stopBeep(); stopVib();
     cur=null;
   }
-  cur=kind; t0=resume ? resume : Date.now();
+  cur=kind; t0=resume ? resume : Date.now(); sendFailed=false;
   C.active = isTest ? null : {kind:kind, t0:t0}; save();
   var t=TYPE[kind];
   var a=document.getElementById('alert');
@@ -219,6 +223,8 @@ function fire(kind, resume, isTest){
   // 中継が未設定の端末でだけ、LINEアプリを開く手動送信を出す
   document.getElementById('btnLineApp').classList.toggle('hide', !!C.gas);
   startTick(); startBeep(); startVib();
+  clearTimeout(autoTimer);
+  autoTimer = setTimeout(autoClear, Math.max(1000, AUTO_MS-(Date.now()-t0)));
   if(resume){ setSend('', '（再表示）画面が再読み込みされました'); renderLog(); return; }
   C.logs.push({t:hhmm(), kind:kind, act:C.act||'', at:Date.now()});
   if(C.logs.length>60) C.logs=C.logs.slice(-60);
@@ -239,9 +245,12 @@ function gasURL(type, extra){
   if(extra) u += extra;
   return u;
 }
+var sendFailed=false;
 function setSend(state, msg){
+  sendFailed = (state==='ng');
   var el=document.getElementById('aSend'); if(!el) return;
   el.classList.toggle('ng', state==='ng');
+  var cl=document.getElementById('btnClose'); if(cl) cl.classList.toggle('hide', state!=='ng');
   el.textContent = msg;
   document.getElementById('btnRetry').classList.toggle('hide', state!=='ng');
 }
@@ -271,10 +280,13 @@ function testFire(){ closeCfg(); setTimeout(function(){fire('sound', 0, true);},
 
 function startTick(){
   clearInterval(tick);
-  tick=setInterval(function(){
-    var s=Math.floor((Date.now()-t0)/1000);
-    document.getElementById('aTime').textContent=Math.floor(s/60)+':'+two(s%60);
-  },500);
+  function draw(){
+    var left=Math.ceil((AUTO_MS-(Date.now()-t0))/1000);
+    if(left<0) left=0;
+    document.getElementById('aTime').textContent=left+'秒';
+  }
+  draw();
+  tick=setInterval(draw,250);
 }
 
 // ---- 音（ブースでは聞こえない前提の補助）----
@@ -308,16 +320,23 @@ function startVib(){
 function stopVib(){ clearInterval(vib); vib=null; if(navigator.vibrate) navigator.vibrate(0); }
 
 // ---- 解除 ----
-function clearCall(){
-  var s=Math.floor((Date.now()-t0)/1000);
-  if(C.logs.length) C.logs[C.logs.length-1].wait=s;
-  save(); renderLog();
-  // 対応済みをLINEにも流す（複数のSMが同時に走るのを防ぐ）
-  if(C.gas){
-    var u = gasURL('done', '&wait=' + encodeURIComponent(Math.floor(s/60)+':'+two(s%60)));
-    try{ fetch(u,{method:'GET'}).catch(function(){ fetch(u,{mode:'no-cors'}).catch(function(){}); }); }catch(e){}
+// 自動で戻るタイミング。LINEに送れていない時だけは画面を残す
+// （通知が飛んでいないのに黙って消えると、誰も呼び出しに気づけないため）
+function autoClear(){
+  if(sendFailed){
+    clearInterval(tick); tick=null; stopBeep(); stopVib();
+    var el=document.getElementById('aTime'); if(el) el.textContent='未送信';
+    var sub=document.getElementById('aSubAuto'); if(sub) sub.textContent='LINEに送れていません。SMに直接伝えてください';
+    return;
   }
-  cur=null; C.active=null; save();
+  clearCall();
+}
+function forceClear(){ clearCall(); }
+function clearCall(){
+  // 「対応した」を押してもらう運用はやめたので、done は送らない（押し忘れの元を断つ）
+  clearTimeout(autoTimer); autoTimer=null;
+  var cl=document.getElementById('btnClose'); if(cl) cl.classList.add('hide');
+  cur=null; C.active=null; save(); renderLog();
   clearInterval(tick); stopBeep(); stopVib();
   var a=document.getElementById('alert');
   a.classList.remove('on','flash');
@@ -409,7 +428,8 @@ if(SETUP){ C.gas=SETUP.u; C.key=SETUP.k; save(); }
 renderNow(); renderLog();
 // 呼び出し中に画面が再読み込みされても（メモリ不足・誤操作）、点滅を復元する
 if(C.active && C.active.kind && TYPE[C.active.kind]){
-  if(Date.now()-(C.active.t0||0) > 3*3600*1000){ C.active=null; save(); }   // 3時間以上前のものは古い呼び出しとして捨てる
+  // 自動で戻る秒数を過ぎていれば、もう出し直さない
+  if(Date.now()-(C.active.t0||0) >= AUTO_MS){ C.active=null; save(); }
   else setTimeout(function(){ fire(C.active.kind, C.active.t0||Date.now()); }, 300);
 }
 if(SETUP){ setTimeout(function(){ alert('共有設定を読み込みました。⚙ でステージ名と演者名を確認してください。'); }, 600); }
