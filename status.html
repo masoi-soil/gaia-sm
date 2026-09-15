@@ -242,7 +242,7 @@ footer{max-width:1200px;margin:0 auto;padding:20px 16px calc(16px + var(--sab));
 </div>
 
 <script>
-var APP_VERSION = 'status v6';
+var APP_VERSION = 'status v7';
 
 // ===== このページに共有設定を持たせる =====
 // 端末に何も入れなくても、URLを開いただけで中身が見えるようにするための既定値。
@@ -761,16 +761,15 @@ function renderChui(){
 
   var calls = (STATE.calls||[]).slice().sort(function(a,b){ return (a.seq||0)-(b.seq||0); });
   // call.html v5 から「対応した」を押す運用をやめた（押し忘れ防止）ので、
-  // done が来る前提をやめて「直近に呼び出しがあった」ことだけを15分だけ出す。
+  // done が来る前提をやめて「直近に呼び出しがあった」ことだけを5分だけ出す。
   calls.forEach(function(c){
     if(c.type!=='sound' && c.type!=='drink') return;
     var em = Math.floor((now - Date.parse(c.ts))/60000);
-    if(isNaN(em) || em>15) return;
-    var label = em<1 ? 'たった今' : em+'分前';
+    if(isNaN(em) || em>5) return;   // 5分だけ出して自然に消える
     if(c.type==='sound'){
-      rows.push({text:'📣 ブースからステマネ呼び出し　'+label, color:'var(--bad)', w:1});
+      rows.push({text:'📣 ブースからステマネ呼び出し', color:'var(--bad)', w:1});
     } else {
-      rows.push({text:'🥤 ドリンク呼び出し　'+label, color:'var(--acc)', w:2});
+      rows.push({text:'🥤 ドリンク呼び出し', color:'var(--acc)', w:2});
     }
   });
 

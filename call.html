@@ -111,7 +111,7 @@ input{width:100%;background:#0f1318;color:var(--tx);border:1px solid var(--line)
     <div class="aEn" id="aEn">DRINK</div>
     <div class="aSub" id="aAct"></div>
     <div class="aSub" id="aSubAuto">ステマネのLINEに通知しました</div>
-    <div class="aTime" id="aTime">20秒</div>
+    <div class="aTime hide" id="aTime"></div>
     <div class="aSend" id="aSend"></div>
   </div>
   <div class="aBtns">
@@ -124,7 +124,7 @@ input{width:100%;background:#0f1318;color:var(--tx);border:1px solid var(--line)
 <!-- 設定 -->
 <div id="cfg" onclick="if(event.target.id==='cfg')closeCfg()">
   <div class="sheet">
-    <h3>設定（SM用） <span style="font-size:12px;opacity:.55">call v6</span></h3>
+    <h3>設定（SM用） <span style="font-size:12px;opacity:.55">call v7</span></h3>
     <label>現在の演者名（任意）</label>
     <input id="inAct" placeholder="例: VARANOID">
     <label>ステージ名</label>
@@ -280,15 +280,12 @@ function pushLine(kind, tryNo){
 function retryPush(){ if(cur) pushLine(cur, 0); }
 function testFire(){ closeCfg(); setTimeout(function(){fire('sound', 0, true);},250); }
 
+// 残り秒数は出さない（演者に「あと何秒」を意識させない）。
+// この欄は LINE に送れなかった時だけ「未送信」を出すのに使う。
 function startTick(){
-  clearInterval(tick);
-  function draw(){
-    var left=Math.ceil((AUTO_MS-(Date.now()-t0))/1000);
-    if(left<0) left=0;
-    document.getElementById('aTime').textContent=left+'秒';
-  }
-  draw();
-  tick=setInterval(draw,250);
+  clearInterval(tick); tick=null;
+  var el=document.getElementById('aTime');
+  if(el){ el.textContent=''; el.classList.add('hide'); }
 }
 
 // ---- 音（ブースでは聞こえない前提の補助）----
@@ -327,7 +324,7 @@ function stopVib(){ clearInterval(vib); vib=null; if(navigator.vibrate) navigato
 function autoClear(){
   if(sendFailed){
     clearInterval(tick); tick=null; stopBeep(); stopVib();
-    var el=document.getElementById('aTime'); if(el) el.textContent='未送信';
+    var el=document.getElementById('aTime'); if(el){ el.textContent='未送信'; el.classList.remove('hide'); }
     var sub=document.getElementById('aSubAuto'); if(sub) sub.textContent='LINEに送れていません。SMに直接伝えてください';
     return;
   }
