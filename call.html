@@ -124,7 +124,7 @@ input{width:100%;background:#0f1318;color:var(--tx);border:1px solid var(--line)
 <!-- 設定 -->
 <div id="cfg" onclick="if(event.target.id==='cfg')closeCfg()">
   <div class="sheet">
-    <h3>設定（SM用） <span style="font-size:12px;opacity:.55">call v2</span></h3>
+    <h3>設定（SM用） <span style="font-size:12px;opacity:.55">call v3</span></h3>
     <label>現在の演者名（任意）</label>
     <input id="inAct" placeholder="例: VARANOID">
     <label>ステージ名</label>
@@ -348,7 +348,7 @@ function testPush(){
   save();
   if(!C.gas){ el.textContent='中継URLを入力してください'; return; }
   el.textContent='テスト送信中…';
-  var url = gasURL('drink');
+  var url = gasURL('test');
   fetch(url,{method:'GET'}).then(function(r){return r.text();}).then(function(t){
     if(String(t).indexOf('sent')>=0) el.textContent='✓ 成功。LINEグループを確認してください';
     else el.textContent='✗ ' + String(t).slice(0,80);
