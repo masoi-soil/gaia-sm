@@ -124,7 +124,7 @@ input{width:100%;background:#0f1318;color:var(--tx);border:1px solid var(--line)
 <!-- 設定 -->
 <div id="cfg" onclick="if(event.target.id==='cfg')closeCfg()">
   <div class="sheet">
-    <h3>設定（SM用） <span style="font-size:12px;opacity:.55">call v5</span></h3>
+    <h3>設定（SM用） <span style="font-size:12px;opacity:.55">call v6</span></h3>
     <label>現在の演者名（任意）</label>
     <input id="inAct" placeholder="例: VARANOID">
     <label>ステージ名</label>
@@ -142,7 +142,7 @@ input{width:100%;background:#0f1318;color:var(--tx);border:1px solid var(--line)
     <button class="sbtn pri" onclick="saveCfg()">保存</button>
     <button class="sbtn" onclick="testPush()">LINEに接続テスト</button>
     <div id="testResult" class="note"></div>
-    <button class="sbtn" onclick="testFire()">呼び出し画面をテスト</button>
+    <button class="sbtn" onclick="testFire()">呼び出し画面をテスト（LINEには送りません）</button>
     <div class="note">
       <b>置き方</b><br>
       ブースに1台固定して、この画面を開いたままにしてください。押されると画面全体が色で覆われて、フチがゆっくり光ります。
@@ -226,6 +226,8 @@ function fire(kind, resume, isTest){
   clearTimeout(autoTimer);
   autoTimer = setTimeout(autoClear, Math.max(1000, AUTO_MS-(Date.now()-t0)));
   if(resume){ setSend('', '（再表示）画面が再読み込みされました'); renderLog(); return; }
+  // 「呼び出し画面をテスト」は画面の確認だけ。LINEにも記録にも一切送らない
+  if(isTest){ setSend('', '🧪 画面テスト（LINEには送っていません）'); return; }
   C.logs.push({t:hhmm(), kind:kind, act:C.act||'', at:Date.now()});
   if(C.logs.length>60) C.logs=C.logs.slice(-60);
   save(); renderLog();
