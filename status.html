@@ -4,8 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GAIA状況">
 <meta name="theme-color" content="#0b0d10">
 <meta name="format-detection" content="telephone=no">
+<link rel="apple-touch-icon" href="icon-status.png">
+<link rel="icon" href="icon-status.png">
 <title>GAIA メインステージ 状況</title>
 <style>
 :root{
@@ -116,6 +121,12 @@ body:not(.day) .toast{color:#062611}
 
 footer{max-width:1200px;margin:0 auto;padding:20px 16px calc(16px + var(--sab));text-align:center;
   color:var(--tx2);font-size:12px;line-height:1.8}
+
+.a2hs{max-width:1200px;margin:10px auto 0;padding:0 16px;display:flex}
+.a2hsIn{flex:1;display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:12px;padding:10px 12px;font-size:13px;color:var(--tx2);line-height:1.6}
+.a2hsIn b{color:var(--tx)}
+.a2hsX{background:none;border:0;color:var(--tx2);font-size:20px;line-height:1;padding:4px 6px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -155,6 +166,13 @@ footer{max-width:1200px;margin:0 auto;padding:20px 16px calc(16px + var(--sab));
 <div class="toast" id="toast"></div>
 
 <div id="dash" class="hide">
+
+<div class="a2hs hide" id="a2hs">
+  <div class="a2hsIn">
+    <div style="flex:1">共有ボタン →「<b>ホーム画面に追加</b>」しておくと、次からアイコン一発でここが開きます。</div>
+    <button class="a2hsX" onclick="dismissA2hs()" aria-label="閉じる">×</button>
+  </div>
+</div>
 
 <header>
   <div class="hrow">
@@ -224,10 +242,19 @@ footer{max-width:1200px;margin:0 auto;padding:20px 16px calc(16px + var(--sab));
 </div>
 
 <script>
-var APP_VERSION = 'status v3';
+var APP_VERSION = 'status v4';
+
+// ===== このページに共有設定を持たせる =====
+// 端末に何も入れなくても、URLを開いただけで中身が見えるようにするための既定値。
+// 合言葉を変えたらここも変えること。空にすれば従来どおり「リンク or 手入力」の動きに戻る。
+var BUILTIN = {
+  u: 'https://script.google.com/macros/s/AKfycbwEUnnNUYXkplsEzy2T3DPs_U5BuXNG_1d-EVeDnoy3hJnCAXcjHzT5v5eC0Xx9h_F0Xg/exec',
+  k: 'gaia2026'
+};
 
 // ===== 状態（同期設定のみ保存。それ以外は毎回作り直す） =====
 var KEY = 'sm-status-v1';
+var CKEY = 'sm-status-cache-v1';
 var S = { startDate:'2026-09-19', cfg:{warn:15, esc:30, silence:30, change:15}, sync:{url:'', key:''} };
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify({sync:S.sync})); }catch(e){} }
 function load(){
@@ -238,6 +265,28 @@ function load(){
       if(o && o.sync){ S.sync.url = o.sync.url||''; S.sync.key = o.sync.key||''; }
     }
   }catch(e){}
+  // 保存も配布リンクも無い端末は、このページが持っている既定値で開く
+  if((!S.sync.url || !S.sync.key) && BUILTIN.u && BUILTIN.k){
+    S.sync.url = BUILTIN.u; S.sync.key = BUILTIN.k;
+  }
+}
+
+// ===== 前回取ってきた中身のキャッシュ（開いた瞬間に絵を出すため） =====
+function saveCache(events){
+  try{
+    if(!events || !events.length) return;
+    var j = JSON.stringify({t:Date.now(), e:events});
+    if(j.length > 2500000) return;   // でかすぎる時は諦める（保存失敗で落とさない）
+    localStorage.setItem(CKEY, j);
+  }catch(e){}
+}
+function loadCache(){
+  try{
+    var raw = localStorage.getItem(CKEY); if(!raw) return null;
+    var o = JSON.parse(raw);
+    if(!o || !o.e || !o.e.length) return null;
+    return o;
+  }catch(e){ return null; }
 }
 function syncOn(){ return !!(S.sync && S.sync.url && S.sync.key); }
 
@@ -497,7 +546,7 @@ function tryDashFallback(){
 }
 
 // ===== イベントから状態を毎回作り直す（差分カーソルは持たない） =====
-var STATE = { stages: parseTT(REAL_TT), logs:[], deletedLogs:[], roleDev:'', feed:[], calls:[], lastOk:0, lastErr:false };
+var STATE = { stages: parseTT(REAL_TT), logs:[], deletedLogs:[], roleDev:'', feed:[], calls:[], lastOk:0, lastErr:false, fromCache:false, booting:true };
 
 function applyAll(events){
   var stages = parseTT(REAL_TT);
@@ -544,14 +593,20 @@ function pullAll(){
     .then(function(t){
       pullAll._busy = false;
       var r; try{ r = (typeof t==='string') ? JSON.parse(t) : t; }catch(e){ r = null; }
-      if(!r || !r.ok){ STATE.lastErr = true; renderHeader(); return; }
+      STATE.booting = false;
+      if(!r || !r.ok){ STATE.fromCache = false; STATE.lastErr = true; renderHeader(); return; }
       applyAll(r.events||[]);
+      saveCache(r.events||[]);
+      STATE.booting = false;
+      STATE.fromCache = false;
       STATE.lastOk = Date.now();
       STATE.lastErr = false;
       renderAll();
     })
     .catch(function(){
       pullAll._busy = false;
+      STATE.booting = false;
+      STATE.fromCache = false;
       STATE.lastErr = true;
       renderHeader();
     });
@@ -566,6 +621,8 @@ function renderHeader(){
   var now = new Date();
   var c = document.getElementById('clock'); if(c) c.textContent = fmt(now.getHours()*60+now.getMinutes());
   var el = document.getElementById('updTag'); if(!el) return;
+  if(STATE.fromCache){ el.textContent='● 前回の内容（読み込み中…）'; el.className='sub wr'; return; }
+  if(STATE.booting){ el.textContent='● 読み込み中…'; el.className='sub wr'; return; }
   if(!STATE.lastOk){ el.textContent='● 更新できていません'; el.className='sub bd'; return; }
   var m = Math.floor((Date.now()-STATE.lastOk)/60000);
   if(m>5){ el.textContent='● 更新できていません'; el.className='sub bd'; }
@@ -845,7 +902,7 @@ function renderTrouble(){
 function renderFooter(){
   var el = document.getElementById('footTxt');
   var t = STATE.lastOk ? fmtClockTime(new Date(STATE.lastOk)) : '--:--:--';
-  el.textContent = '20秒ごとに自動更新 / 最終取得 '+t+' / このページは見るだけ（記録はSMの画面から）/ status v2';
+  el.textContent = '20秒ごとに自動更新 / 最終取得 '+t+' / このページは見るだけ（記録はSMの画面から）/ '+APP_VERSION;
 }
 
 function renderAll(){
@@ -900,9 +957,31 @@ function useDashFallback(){
   }
 }
 
+function dismissA2hs(){
+  try{ localStorage.setItem('sm-status-a2hs','1'); }catch(e){}
+  var el = document.getElementById('a2hs'); if(el) el.classList.add('hide');
+}
+function maybeA2hs(){
+  var standalone = false;
+  try{
+    standalone = (window.navigator.standalone === true) ||
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  }catch(e){}
+  var done = false;
+  try{ done = localStorage.getItem('sm-status-a2hs')==='1'; }catch(e){}
+  if(standalone || done) return;
+  var el = document.getElementById('a2hs'); if(el) el.classList.remove('hide');
+}
+
 function showDash(){
   document.getElementById('noSetup').classList.add('hide');
   document.getElementById('dash').classList.remove('hide');
+  maybeA2hs();
+  // 通信を待たずに、まず前回の中身を出す（開いた瞬間に真っ白にしない）
+  var c = loadCache();
+  if(c){
+    try{ applyAll(c.e); STATE.lastOk = c.t; STATE.fromCache = true; }catch(e){ STATE.fromCache = false; }
+  }
   renderAll();
   pullAll();
   if(!showDash._started){

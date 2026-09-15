@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="SM">
 <meta name="theme-color" content="#0b0d10">
 <meta name="format-detection" content="telephone=no">
+<link rel="apple-touch-icon" href="icon-sm.png">
+<link rel="icon" href="icon-sm.png">
 <title>SM統括ダッシュボード</title>
 <style>
 :root{
@@ -352,7 +354,8 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
               <button id="syToggle" onclick="toggleSync()">同期オン</button>
             </div>
             <button class="g" onclick="makeSetupLink()" style="width:100%;margin-top:8px">配布用リンクを作る（SMに送る）</button>
-            <button class="p" onclick="makeStatusLink()" style="width:100%;margin-top:8px">現状ページのリンクを作る（オーガナイザー用）</button>
+            <button class="p" onclick="makeStatusLink()" style="width:100%;margin-top:8px">現状ページのリンクをコピー（オーガナイザー用）</button>
+            <div class="note" style="margin-top:6px">このリンクは開くだけで中身が出ます（合言葉の入力は要りません）。</div>
           </div>
         </div>
 
@@ -870,7 +873,15 @@ var MANUAL = [
 var S = {stages:[], logs:[], cur:0, mode:'lead', reports:[], lastRx:null, startDate:'2026-09-19',
   sync:{url:'',key:'',dev:'',last:0,outbox:[],on:true,lastOk:null}, roleDev:'', feed:[],
   cfg:{change:15, warn:15, esc:30, silence:30}};
-var APP_VERSION = 'v14';
+var APP_VERSION = 'v15';
+
+// ===== この画面に共有設定を持たせる =====
+// 配布リンク（#s=…）が無くても、URLを開いただけで共有がつながるようにするための既定値。
+// 合言葉を変えたらここも変えること。空にすれば従来どおり「配布リンク or 手入力」の動きに戻る。
+var BUILTIN = {
+  u: 'https://script.google.com/macros/s/AKfycbwEUnnNUYXkplsEzy2T3DPs_U5BuXNG_1d-EVeDnoy3hJnCAXcjHzT5v5eC0Xx9h_F0Xg/exec',
+  k: 'gaia2026'
+};
 var KEY = 'sm-dash-v4';
 
 function save(){ try{localStorage.setItem(KEY, JSON.stringify(S));}catch(e){} }
@@ -1838,7 +1849,10 @@ function makeStatusLink(){
   saveSync();
   var el=document.getElementById('syResult');
   if(!S.sync.url||!S.sync.key){ el.textContent='先に共有URLと合言葉を入れてください'; return; }
-  var link=location.origin+location.pathname.replace(/sm\.html$/,'status.html')+'#s='+b64enc(JSON.stringify({u:S.sync.url,k:S.sync.key}));
+  var base=location.origin+location.pathname.replace(/sm\.html$/,'status.html');
+  // 既定値と同じ設定なら短いURLでよい。違う設定を使っている時だけ #s=… を付ける。
+  var same=(typeof BUILTIN!=='undefined' && BUILTIN.u===S.sync.url && BUILTIN.k===S.sync.key);
+  var link=same ? base : base+'#s='+b64enc(JSON.stringify({u:S.sync.url,k:S.sync.key}));
   copy(link);
   el.textContent='現状ページのリンクをコピーしました（見るだけのページ。関係者限定）';
 }
@@ -2112,7 +2126,7 @@ function welcomeGo(){
   if(!n){ toast('名前を入れてください'); return; }
   S.sync.dev = n;
   document.getElementById('syDev').value = n;
-  if(SETUP_APPLIED) S.mode = 'sm';
+  if(SETUP_APPLIED || (BUILTIN_APPLIED && FRESH_DEVICE)) S.mode = 'sm';
   save(); applyMode(); render();
   document.getElementById('welcome').classList.add('hide');
   toast('準備できました');
@@ -2124,6 +2138,9 @@ function toast(m){
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 
 // init
+// この端末に保存がまだ無い＝初めて開いた端末
+var FRESH_DEVICE = false;
+try{ FRESH_DEVICE = !localStorage.getItem(KEY); }catch(e){}
 load();
 (function(){ ['verTag','verHead'].forEach(function(id){ var v=document.getElementById(id); if(v) v.textContent=APP_VERSION; }); })();
 document.getElementById('cfgChange').value = S.cfg.change;
@@ -2132,8 +2149,16 @@ document.getElementById('cfgEsc').value = S.cfg.esc;
 document.getElementById('cfgSilence').value = S.cfg.silence;
 document.getElementById('cfgStart').value = S.startDate;
 readSetupLink();
+var BUILTIN_APPLIED = false;
 if(SETUP_APPLIED){
   S.sync.url=SETUP_APPLIED.u; S.sync.key=SETUP_APPLIED.k; S.sync.on=true; save();
+} else if((!S.sync.url || !S.sync.key) && BUILTIN.u && BUILTIN.k){
+  // 配布リンク無しで開かれた端末にも、この画面が持っている設定を入れる
+  S.sync.url=BUILTIN.u; S.sync.key=BUILTIN.k; S.sync.on=true;
+  // 初めての端末は現場SMモードで始める（統括の端末だけ 設定→統括モード に切り替える）
+  if(FRESH_DEVICE) S.mode='sm';
+  BUILTIN_APPLIED = true;
+  save();
 }
 applyTheme();
 applyMode();
@@ -2143,7 +2168,7 @@ document.getElementById('syDev').value = S.sync.dev||'';
 document.getElementById('syToggle').textContent = S.sync.on?'同期オン':'同期オフ';
 syncBadge();
 setInterval(function(){ flushOutbox(); pullEvents(); }, 20000);
-if(SETUP_APPLIED){
+if(SETUP_APPLIED || BUILTIN_APPLIED){
   setTimeout(function(){
     syncBadge(); pullEvents();
     toast('共有設定が入りました');
