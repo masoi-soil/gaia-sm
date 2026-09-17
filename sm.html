@@ -483,6 +483,7 @@ body.day .mbody .hl{background:rgba(3,105,161,.09)}
       </ol>
       <div class="note" style="margin:-6px 0 6px">本番前は自由に押して試してOK（本番前に記録は消します）</div>
       <button class="g" id="wGo" onclick="welcomeGo()" style="width:100%;margin-top:6px;min-height:56px;font-size:18px">はじめる</button>
+      <div style="text-align:center;margin-top:12px;font-size:14px">見るだけの人は → <a href="status.html" style="color:var(--live)">いまの状況ページ</a></div>
     </div>
   </div>
 </div>
@@ -873,7 +874,7 @@ var MANUAL = [
 var S = {stages:[], logs:[], cur:0, mode:'lead', reports:[], lastRx:null, startDate:'2026-09-19',
   sync:{url:'',key:'',dev:'',last:0,outbox:[],on:true,lastOk:null}, roleDev:'', feed:[],
   cfg:{change:15, warn:15, esc:30, silence:30}};
-var APP_VERSION = 'v15';
+var APP_VERSION = 'v16';
 
 // ===== この画面に共有設定を持たせる =====
 // 配布リンク（#s=…）が無くても、URLを開いただけで共有がつながるようにするための既定値。
