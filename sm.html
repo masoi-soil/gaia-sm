@@ -187,7 +187,7 @@ main{max-width:720px;margin:0 auto;padding:var(--space-4) var(--space-4) var(--s
 .stageSec{margin-top:0}
 .actListWrap{margin-top:var(--space-3)}
 .actList .act:last-child{border-bottom:none}
-.act{display:grid;grid-template-columns:72px 1fr auto;gap:var(--space-3);align-items:center;
+.act{display:grid;grid-template-columns:72px minmax(0,1fr);gap:var(--space-2) var(--space-3);align-items:center;
   padding:var(--space-3) 0;border-bottom:var(--rule-2)}
 .act.anchor{background:var(--tint-ok)}
 .act.anchor .nm{color:var(--color-ok)}
@@ -202,8 +202,11 @@ main{max-width:720px;margin:0 auto;padding:var(--space-4) var(--space-4) var(--s
 .dayTag{display:block;font-size:var(--fs-1);color:var(--color-muted);font-weight:700}
 .nm{font-family:var(--font-body);font-weight:700;font-size:var(--fs-3);overflow-wrap:anywhere;line-height:1.35}
 .nm small{display:block;color:var(--color-muted);font-weight:600;font-size:var(--fs-1);margin-top:2px}
+.nm small.smtag{color:var(--color-accent);font-family:var(--font-mono);font-weight:700}
+.nowSm{font-family:var(--font-mono);font-weight:700;font-size:var(--fs-2);color:var(--color-accent);margin-top:var(--space-1)}
 .anchorTag{display:block;color:var(--color-ok);font-size:var(--fs-1);margin-top:2px}
-.btns{display:flex;gap:var(--space-2)}
+.btns{display:flex;gap:var(--space-2);grid-column:2;justify-self:start}
+.btns:empty{display:none}
 .railWrap{position:relative;padding-inline-start:var(--space-4)}
 .railWrap::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--color-rule)}
 
@@ -339,6 +342,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
     <section class="sec" id="timerCard">
       <div id="timerLabel">転換タイマー</div>
       <div id="nowAct" class="display actNow"></div>
+      <div id="nowSm" class="nowSm"></div>
       <div class="timerMeta">
         <span id="timerSub">待機中</span>
         <span id="timerTarget"></span>
@@ -993,7 +997,7 @@ var MANUAL = [
 var S = {stages:[], logs:[], cur:0, mode:'lead', reports:[], lastRx:null, startDate:'2026-09-19',
   sync:{url:'',key:'',dev:'',last:0,outbox:[],on:true,lastOk:null}, roleDev:'', feed:[],
   cfg:{change:15, warn:15, esc:30, silence:30}};
-var APP_VERSION = 'v17';
+var APP_VERSION = 'v18';
 
 // ===== この画面に共有設定を持たせる =====
 // 配布リンク（#s=…）が無くても、URLを開いただけで共有がつながるようにするための既定値。
@@ -1108,23 +1112,23 @@ function loadTT(src){
 }
 var REAL_TT =
 "#メインステージ 9/19-21\n"+
-"14:00 KANDA SAORI with AKIRA IKEDA\n"+
+"14:00 SAORI KANDA with AKIRA IKEDA\n"+
 "15:00 YØSHIKI\n"+
-"16:00 Tom monkey\n"+
+"16:00 Tom Monkey\n"+
 "17:00 SHIVA\n"+
 "18:00 TSUNE\n"+
 "19:00 SIONA 🇰🇷\n"+
 "20:00 Poo-chii\n"+
 "21:00 PiERO\n"+
-"22:00 ◆Groove Box live\n"+
+"22:00 ◆Groovebox live\n"+
 "23:00 KAZYA\n"+
 "00:00 WATARU\n"+
-"01:00 ◆Xipe totecs live\n"+
+"01:00 MASOI\n"+
 "02:00 KANKEEY\n"+
-"03:00 ◆RGB live\n"+
+"03:00 ◆RBG live\n"+
 "04:00 Suma 🇹🇼\n"+
 "05:00 YANMAH\n"+
-"06:00 ◆Revival.Revival live\n"+
+"06:00 ◆Revive Revival live\n"+
 "07:00 SAEKI\n"+
 "08:00 AYAKA\n"+
 "09:00 PINKY\n"+
@@ -1142,9 +1146,9 @@ var REAL_TT =
 "21:00 🔥YUKI.T\n"+
 "22:00 ◆VARANOID 🇫🇷 live\n"+
 "23:00 HISA\n"+
-"00:00 BuzZ\n"+
-"01:00-02:30 ◆Fungas Funk 🇪🇸 live\n"+
-"02:30 FUMI\n"+
+"00:00-01:30 BUZZ\n"+
+"01:30-02:30 ◆Digitalk live\n"+
+"02:30 DJ FUMI\n"+
 "03:30 ◆KATAK 🇭🇰 live\n"+
 "04:30 MI-BOU\n"+
 "05:30 YUKI\n"+
@@ -1156,6 +1160,19 @@ var REAL_TT =
 "11:30 HATTA\n"+
 "12:30 ◆Spectra Sonics live ★次もlive\n"+
 "13:30-15:00 ◆Aven7 🇧🇷 live";
+// 担当ステマネ（v04・開始時刻＝初日00:00からの通し分 をキーに）。表示専用
+var SM_BY_START = {
+  840:'YUKI.T + MASOI', 900:'YUKI.T + MASOI', 960:'YUKI.T + MASOI', 1020:'OC', 1080:'OC', 1140:'OC',
+  1200:'ANNY', 1260:'ANNY', 1320:'ANNY', 1380:'ANNY',
+  1440:'ANNY', 1500:'ANNY', 1560:'Stick', 1620:'Stick', 1680:'Stick', 1740:'NEURO', 1800:'NEURO', 1860:'NEURO',
+  1920:'Shinji Sugiyama', 1980:'Shinji Sugiyama', 2040:'Shinji Sugiyama', 2100:'KENSHIRO', 2160:'KENSHIRO', 2220:'KENSHIRO',
+  2280:'Tom Monkey', 2340:'Tom Monkey', 2400:'Tom Monkey', 2460:'OC', 2520:'OC', 2580:'OC',
+  2640:'PiERO', 2700:'PiERO', 2760:'PiERO', 2820:'PEDLOXxX',
+  2880:'PEDLOXxX', 2970:'PEDLOXxX（02:00〜 + Tom Monkey）', 3030:'PEDLOXxX + Tom Monkey', 3090:'PEDLOXxX + Tom Monkey', 3150:'PEDLOXxX + Tom Monkey',
+  3210:'Stick', 3270:'Stick', 3330:'Stick', 3390:'NEURO', 3450:'NEURO', 3510:'NEURO',
+  3570:'Shinji Sugiyama', 3630:'Shinji Sugiyama', 3690:'Shinji Sugiyama（14:30〜 KENSHIRO）'
+};
+function smFor(a){ return SM_BY_START[a.start] || ''; }
 function loadDemo(){
   document.getElementById('ttInput').value = REAL_TT;
   loadTT(REAL_TT);
@@ -1434,7 +1451,7 @@ function stageCard(st, si, full, compact){
     var dayTag = (a.start>=1440) ? '<span class="dayTag">'+fmtD(a.start).split(' ')[0]+'</span>' : '';
     row.innerHTML =
       '<div class="tm">'+dayTag+fmt(a.start)+'<br><span class="tm2">'+fmt(a.end)+'</span>'+predHtml+'</div>'+
-      '<div class="nm">'+esc(a.name)+'<small>'+esc(actual)+diff+'</small>'+tag+'</div>'+
+      '<div class="nm">'+esc(a.name)+(smFor(a)?'<small class="smtag">担当 '+esc(smFor(a))+'</small>':'')+'<small>'+esc(actual)+diff+'</small>'+tag+'</div>'+
       '<div class="btns"></div>';
     var btns = row.querySelector('.btns');
     if(!compact && a.aStart!==null && ai===lastStampedIdx(st)){
@@ -1511,11 +1528,12 @@ function tick(){
   var L=document.getElementById('timerLabel'), V=document.getElementById('timerVal'),
       Sb=document.getElementById('timerSub'), T=document.getElementById('timerTarget'),
       N=document.getElementById('nowAct');
-  if(!st){ L.textContent='タイマー'; V.textContent='--:--'; Sb.textContent='タイムテーブル未設定'; T.textContent=''; if(N) N.textContent=''; return; }
+  if(!st){ L.textContent='タイマー'; V.textContent='--:--'; Sb.textContent='タイムテーブル未設定'; T.textContent=''; if(N) N.textContent=''; var NS0=document.getElementById('nowSm'); if(NS0) NS0.textContent=''; return; }
   var i = activeIdx(st);
-  if(i<0){ L.textContent='終演'; V.textContent='✓'; Sb.textContent='全アクト終了'; T.textContent=''; if(N) N.textContent=''; return; }
+  if(i<0){ L.textContent='終演'; V.textContent='✓'; Sb.textContent='全アクト終了'; T.textContent=''; if(N) N.textContent=''; var NS0=document.getElementById('nowSm'); if(NS0) NS0.textContent=''; return; }
   var a = st.acts[i];
   if(N) N.textContent = a.name;
+  var NS=document.getElementById('nowSm'); if(NS) NS.textContent = smFor(a) ? '担当ステマネ　'+smFor(a) : '';
   if(a.aStart !== null){
     // 進行中: 残り時間
     var p = predict(st,i);
@@ -2286,6 +2304,14 @@ if(new Date().getTimezoneOffset() !== -540){
 }
 document.addEventListener('visibilitychange', function(){
   if(document.visibilityState==='visible' && syncOn()){ flushOutbox(); pullEvents(); }
+  // 打刻もログも無い端末は、画面に戻った時にも本番タイテの版ズレを直す（統括の全消去→開き直しで揃うように）
+  if(document.visibilityState==='visible'){
+    try{
+      if(ttUntouched() && ttSignature(parseTT(REAL_TT)) !== ttSignature(S.stages)){
+        document.getElementById('ttInput').value = REAL_TT; loadTT(REAL_TT); toast('本番タイムテーブルを最新にしました');
+      }
+    }catch(e){}
+  }
 });
 // 初回起動時は本番タイムテーブルを自動で読み込む。
 // 打刻もログもまだ無い端末で、保存済みタイテが本番タイテ（REAL_TT）と違えば黙って入れ直す

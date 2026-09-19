@@ -192,6 +192,7 @@ main{max-width:1200px;margin:0 auto;padding:var(--space-4)}
 .ft{font-family:var(--font-mono);font-weight:700;font-size:var(--fs-2);color:var(--color-ink);font-variant-numeric:tabular-nums}
 .ft2{display:inline-block;margin-top:2px;font-family:var(--font-mono);font-weight:700;font-size:var(--fs-1);color:var(--color-muted)}
 .fn{font-family:var(--font-body);font-weight:700;font-size:var(--fs-3);overflow-wrap:anywhere}
+.fsm{display:block;font-family:var(--font-mono);font-weight:700;font-size:var(--fs-1);color:var(--color-accent);margin-top:2px}
 #doneSummary{padding:var(--space-2) 0;color:var(--color-muted);font-family:var(--font-mono);font-size:var(--fs-1);border-bottom:var(--rule-2)}
 #flowToggleBtn{display:block;width:100%;background:transparent;border:0;border-radius:0;color:var(--color-accent);
   text-align:left;padding:var(--space-3) 0;min-height:48px}
@@ -352,7 +353,7 @@ footer{max-width:1200px;margin:0 auto;padding:var(--space-6) var(--space-4) calc
 </div>
 
 <script>
-var APP_VERSION = 'status v9';
+var APP_VERSION = 'status v10';
 
 // ===== このページに共有設定を持たせる =====
 // 端末に何も入れなくても、URLを開いただけで中身が見えるようにするための既定値。
@@ -479,23 +480,23 @@ function parseTT(txt){
 
 var REAL_TT =
 "#メインステージ 9/19-21\n"+
-"14:00 KANDA SAORI with AKIRA IKEDA\n"+
+"14:00 SAORI KANDA with AKIRA IKEDA\n"+
 "15:00 YØSHIKI\n"+
-"16:00 Tom monkey\n"+
+"16:00 Tom Monkey\n"+
 "17:00 SHIVA\n"+
 "18:00 TSUNE\n"+
 "19:00 SIONA 🇰🇷\n"+
 "20:00 Poo-chii\n"+
 "21:00 PiERO\n"+
-"22:00 ◆Groove Box live\n"+
+"22:00 ◆Groovebox live\n"+
 "23:00 KAZYA\n"+
 "00:00 WATARU\n"+
-"01:00 ◆Xipe totecs live\n"+
+"01:00 MASOI\n"+
 "02:00 KANKEEY\n"+
-"03:00 ◆RGB live\n"+
+"03:00 ◆RBG live\n"+
 "04:00 Suma 🇹🇼\n"+
 "05:00 YANMAH\n"+
-"06:00 ◆Revival.Revival live\n"+
+"06:00 ◆Revive Revival live\n"+
 "07:00 SAEKI\n"+
 "08:00 AYAKA\n"+
 "09:00 PINKY\n"+
@@ -513,9 +514,9 @@ var REAL_TT =
 "21:00 🔥YUKI.T\n"+
 "22:00 ◆VARANOID 🇫🇷 live\n"+
 "23:00 HISA\n"+
-"00:00 BuzZ\n"+
-"01:00-02:30 ◆Fungas Funk 🇪🇸 live\n"+
-"02:30 FUMI\n"+
+"00:00-01:30 BUZZ\n"+
+"01:30-02:30 ◆Digitalk live\n"+
+"02:30 DJ FUMI\n"+
 "03:30 ◆KATAK 🇭🇰 live\n"+
 "04:30 MI-BOU\n"+
 "05:30 YUKI\n"+
@@ -527,6 +528,19 @@ var REAL_TT =
 "11:30 HATTA\n"+
 "12:30 ◆Spectra Sonics live ★次もlive\n"+
 "13:30-15:00 ◆Aven7 🇧🇷 live";
+// 担当ステマネ（v04・開始時刻＝初日00:00からの通し分 をキーに）。表示専用
+var SM_BY_START = {
+  840:'YUKI.T + MASOI', 900:'YUKI.T + MASOI', 960:'YUKI.T + MASOI', 1020:'OC', 1080:'OC', 1140:'OC',
+  1200:'ANNY', 1260:'ANNY', 1320:'ANNY', 1380:'ANNY',
+  1440:'ANNY', 1500:'ANNY', 1560:'Stick', 1620:'Stick', 1680:'Stick', 1740:'NEURO', 1800:'NEURO', 1860:'NEURO',
+  1920:'Shinji Sugiyama', 1980:'Shinji Sugiyama', 2040:'Shinji Sugiyama', 2100:'KENSHIRO', 2160:'KENSHIRO', 2220:'KENSHIRO',
+  2280:'Tom Monkey', 2340:'Tom Monkey', 2400:'Tom Monkey', 2460:'OC', 2520:'OC', 2580:'OC',
+  2640:'PiERO', 2700:'PiERO', 2760:'PiERO', 2820:'PEDLOXxX',
+  2880:'PEDLOXxX', 2970:'PEDLOXxX（02:00〜 + Tom Monkey）', 3030:'PEDLOXxX + Tom Monkey', 3090:'PEDLOXxX + Tom Monkey', 3150:'PEDLOXxX + Tom Monkey',
+  3210:'Stick', 3270:'Stick', 3330:'Stick', 3390:'NEURO', 3450:'NEURO', 3510:'NEURO',
+  3570:'Shinji Sugiyama', 3630:'Shinji Sugiyama', 3690:'Shinji Sugiyama（14:30〜 KENSHIRO）'
+};
+function smFor(a){ return SM_BY_START[a.start] || ''; }
 
 function anchorCarry(a, dIn){
   if(a.aEnd !== null) return a.aEnd - a.end;                 // 実績優先
@@ -843,7 +857,8 @@ function renderIma(){
   }
 
   // row4
-  document.getElementById('row4a').textContent = '記録担当　'+(STATE.roleDev || '未設定');
+  var curA = (function(){ try{ var i=activeIdx(st); if(i<0) return null; var a=st.acts[i]; if(a.aStart===null && i>0 && st.acts[i-1].aEnd!==null) return a; return a; }catch(e){ return null; } })();
+  document.getElementById('row4a').textContent = '記録担当　'+(STATE.roleDev || '未設定') + (curA && smFor(curA) ? '　／　担当ステマネ　'+smFor(curA) : '');
   var lastEv = (STATE.feed && STATE.feed.length) ? STATE.feed[STATE.feed.length-1] : null;
   var row4b = document.getElementById('row4b');
   if(lastEv){
@@ -947,7 +962,7 @@ function flowRow(st, idx, curI){
   }
   var done = (!live && a.aEnd!==null);
   var cls = 'frow' + (live?' live':'') + (nextHi?' next':'') + (a.anchor?' anchor':'') + (done?' done':'');
-  return '<div class="'+cls+'"><div class="ft">'+ftHtml+'</div><div class="fn">'+esc(a.name)+'</div></div>';
+  return '<div class="'+cls+'"><div class="ft">'+ftHtml+'</div><div class="fn">'+esc(a.name)+(smFor(a)?'<span class="fsm">担当 '+esc(smFor(a))+'</span>':'')+'</div></div>';
 }
 
 var FLOW_EXPANDED = false;
