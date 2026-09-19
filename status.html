@@ -13,7 +13,7 @@
 <link rel="icon" href="icon-status.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@900&family=BIZ+UDPGothic:wght@400;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Zen+Kaku+Gothic+New:wght@900&family=BIZ+UDPGothic:wght@400;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
 <title>GAIA メインステージ 状況</title>
 <style>
 /* Hallmark · design-system: design.md · macrostructure: Ledger (read-only) · genre: atmospheric · theme: Stagelight (custom) · nav: none (見るだけの単画面) · footer: Ft2 inline single line (mono, muted) · enrichment: none · pre-emit critique: P4 H4 E4 S4 R4 V4 */
@@ -241,6 +241,49 @@ footer{max-width:1200px;margin:0 auto;padding:var(--space-6) var(--space-4) calc
 .a2hsIn b{color:var(--color-ink)}
 .a2hsX{flex-shrink:0;background:none;border:0;min-height:48px;min-width:48px;color:var(--color-muted);font-size:20px;
   line-height:1;padding:var(--space-1);cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* ===== theme: Luxury（提案 gaia-status-luxury を反映・夜のみ。昼モードは従来どおり） ===== */
+:root{
+  --color-paper:#070b16; --color-paper-2:#0d1220; --color-paper-3:#141a2c;
+  --color-ink:#f4efe4; --color-ink-2:#c9c2b4; --color-muted:#8a8376;
+  --color-rule:color-mix(in oklab,#c9a66b 28%,transparent); --color-rule-2:color-mix(in oklab,#c9a66b 16%,transparent);
+  --color-accent:#c9a66b; --color-focus:#e4c88a;
+  --color-ok:#3ecfc1; --color-live:#3ecfc1; --color-warn:#d4a24a; --color-bad:#e0705f;
+  --color-on-signal:#070b16;
+  --gold:#c9a66b; --gold2:#e4c88a;
+  --font-serif:'Cormorant Garamond',"Hiragino Mincho ProN","Yu Mincho",serif;
+}
+body:not(.day){
+  background-image:
+    radial-gradient(1100px 520px at 82% -8%, color-mix(in oklab,#3a2258 36%, transparent), transparent 62%),
+    radial-gradient(720px 420px at 8% 0%, color-mix(in oklab,#1a2a4a 38%, transparent), transparent 55%);
+  background-attachment:fixed;
+}
+body:not(.day) header{background:color-mix(in oklab,var(--color-paper) 92%,transparent);border-bottom:1px solid var(--color-rule)}
+body:not(.day) .hdrTitle{font-family:var(--font-serif);font-weight:600;font-size:var(--fs-6);letter-spacing:.04em;color:var(--gold2);line-height:.95}
+body:not(.day) .hdrTitle::before{content:'Welcome to';display:block;font-style:italic;font-size:var(--fs-2);letter-spacing:0;color:var(--gold2);opacity:.85;margin-bottom:2px}
+body:not(.day) .hdrClock{color:var(--gold2);letter-spacing:.04em}
+body:not(.day) .hdrSub{display:block;font-family:var(--font-mono);font-size:var(--fs-1);letter-spacing:.2em;color:var(--color-ink-2);margin-top:6px}
+body:not(.day) .hdrTitle{font-size:var(--fs-7)}
+body.day .hdrSub{font-size:inherit}
+body:not(.day) .sub.ok{color:var(--color-ok)}
+body:not(.day) .sec{border:1px solid var(--color-rule);border-radius:16px;background:rgba(13,18,32,.78);padding:var(--space-4) var(--space-4) var(--space-4);margin-bottom:var(--space-3)}
+body:not(.day) .sec:last-child{border-bottom:1px solid var(--color-rule)}
+body:not(.day) .sechead{font-family:var(--font-serif);font-weight:600;font-size:var(--fs-5);color:var(--gold2);letter-spacing:.02em}
+body:not(.day) .ft,body:not(.day) .fsm,body:not(.day) .k{color:var(--gold)}
+body:not(.day) .fsm{color:var(--gold);opacity:.9}
+body:not(.day) .frow.live{background:color-mix(in oklab,var(--color-live) 10%,transparent);border-radius:10px}
+body:not(.day) .frow.next{background:transparent}
+body:not(.day) .pill{letter-spacing:.06em}
+body:not(.day) .pill-gray{background:color-mix(in oklab,var(--gold) 14%,transparent);color:var(--gold2)}
+body:not(.day) #row1Val{color:var(--color-ok)}
+body:not(.day) #row1Target,body:not(.day) .row4{color:var(--color-ink-2)}
+body:not(.day) .row4{border-top:1px solid var(--color-rule-2)}
+body:not(.day) .updDot,body:not(.day) #updTag::before{display:none}
+body:not(.day) .a2hs{border:1px solid var(--color-rule);border-radius:12px;background:rgba(13,18,32,.78)}
+body:not(.day) footer,body:not(.day) .foot{color:var(--color-muted);letter-spacing:.12em;font-size:var(--fs-1)}
+body:not(.day) button.iconbtn.gh{color:var(--gold2)}
+body:not(.day) .rail::before{background:var(--color-rule)}
 </style>
 </head>
 <body>
@@ -288,7 +331,7 @@ footer{max-width:1200px;margin:0 auto;padding:var(--space-6) var(--space-4) calc
 
 <header>
   <div class="hdrRow1">
-    <div class="hdrTitle">GAIA メインステージ</div>
+    <div class="hdrTitle">GAIA<span class="hdrSub"> メインステージ</span></div>
     <div class="hdrClock" id="clock">--:--</div>
   </div>
   <div class="hdrRow2">
@@ -353,7 +396,7 @@ footer{max-width:1200px;margin:0 auto;padding:var(--space-6) var(--space-4) calc
 </div>
 
 <script>
-var APP_VERSION = 'status v10';
+var APP_VERSION = 'status v11';
 
 // ===== このページに共有設定を持たせる =====
 // 端末に何も入れなくても、URLを開いただけで中身が見えるようにするための既定値。
