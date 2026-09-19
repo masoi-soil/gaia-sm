@@ -105,7 +105,7 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--color-pape
 .hdrRow1{display:flex;align-items:baseline;gap:var(--space-3);flex-wrap:wrap}
 .hdrTitle{flex:1 1 160px;font-family:var(--font-display);font-weight:900;font-size:var(--fs-4);letter-spacing:-0.01em;
   line-height:1.15;overflow-wrap:anywhere;min-width:0}
-.hdrClock{flex-shrink:0;font-family:var(--font-mono);font-weight:700;font-size:var(--fs-7);line-height:1;
+.hdrClock{flex-shrink:0;font-family:var(--font-mono);font-weight:700;font-size:clamp(28px,8.5vw,44px);line-height:1;
   font-variant-numeric:tabular-nums}
 .hdrRow2{display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-2);flex-wrap:wrap}
 .hdrSpacer{flex:1}
@@ -159,7 +159,7 @@ main{max-width:1200px;margin:0 auto;padding:var(--space-4)}
   overflow-wrap:anywhere;min-width:0}
 .row1R{text-align:right}
 #row1SubLabel{font-family:var(--font-mono);font-size:var(--fs-1);color:var(--color-muted);font-weight:700}
-#row1Val{font-family:var(--font-mono);font-weight:700;font-size:var(--fs-8);font-variant-numeric:tabular-nums;line-height:1}
+#row1Val{font-family:var(--font-mono);font-weight:700;font-size:clamp(40px,13vw,64px);font-variant-numeric:tabular-nums;line-height:1}
 #row1Target{margin-top:var(--space-2);color:var(--color-muted);font-family:var(--font-mono);font-size:var(--fs-1)}
 #row2{margin-top:var(--space-3);font-size:var(--fs-3);font-weight:700}
 #row3{margin-top:var(--space-2);color:var(--color-muted);font-size:var(--fs-2);line-height:1.6}
@@ -396,7 +396,7 @@ body:not(.day) .rail::before{background:var(--color-rule)}
 </div>
 
 <script>
-var APP_VERSION = 'status v11';
+var APP_VERSION = 'status v12';
 
 // ===== このページに共有設定を持たせる =====
 // 端末に何も入れなくても、URLを開いただけで中身が見えるようにするための既定値。
@@ -778,13 +778,18 @@ function pullAll(){
 }
 
 // ===== 表示 =====
+
+// 秒つき表示（打刻は分単位なので、秒が意味を持つのは「いまの時刻」と「予定時刻までの残り」だけ）
+function fmtHMS(sec){ var neg=sec<0; sec=Math.abs(sec); var h=Math.floor(sec/3600), m=Math.floor(sec%3600/60), s=sec%60;
+  return (neg?'+':'')+h+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
+function nowSec(){ return nowMin()*60 + new Date().getSeconds(); }
 function fmtClockTime(d){
   function pad(n){ return String(n).length<2 ? '0'+n : String(n); }
   return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
 }
 function renderHeader(){
   var now = new Date();
-  var c = document.getElementById('clock'); if(c) c.textContent = fmt(now.getHours()*60+now.getMinutes());
+  var c = document.getElementById('clock'); if(c) c.textContent = fmtClockTime(now);
   var el = document.getElementById('updTag'); if(!el) return;
   if(STATE.fromCache){ el.textContent='● 前回の内容（読み込み中…）'; el.className='sub wr'; return; }
   if(STATE.booting){ el.textContent='● 読み込み中…'; el.className='sub wr'; return; }
@@ -850,6 +855,7 @@ function renderIma(){
     if(a.aStart !== null){
       var p = predict(st,i);
       var rem = p.e - now;
+      var remS = p.e*60 - nowSec();
       if(a.anchor){
         labelEl.textContent = '⏸ MUSIC STOP 中';
         subLabelEl.textContent = '再開まで';
@@ -857,7 +863,7 @@ function renderIma(){
         labelEl.textContent = '▶ 本番中　'+a.name;
         subLabelEl.textContent = '残り';
       }
-      valEl.textContent = (rem<0?'+':'')+Math.floor(Math.abs(rem)/60)+':'+String(Math.abs(rem)%60).padStart(2,'0');
+      valEl.textContent = fmtHMS(remS);
       valEl.style.color = rem<0 ? 'var(--color-bad)' : 'var(--color-ink)';
       targetEl.textContent = (a.anchor?'再開予定 ':'終了予定 ')+fmt(p.e);
     } else {
@@ -866,7 +872,7 @@ function renderIma(){
         var el2 = now - prev.aEnd;
         labelEl.textContent = '🔧 転換中 → '+a.name;
         subLabelEl.textContent = '経過';
-        valEl.textContent = Math.floor(el2/60)+':'+String(Math.max(0,el2)%60).padStart(2,'0');
+        valEl.textContent = fmtHMS(Math.max(0, nowSec() - prev.aEnd*60));
         valEl.style.color = el2 > S.cfg.change ? 'var(--color-bad)' : 'var(--color-ink)';
         targetEl.textContent = '目安 '+S.cfg.change+'分';
       } else {
@@ -874,7 +880,7 @@ function renderIma(){
         var to = p2.s - now;
         labelEl.textContent = '⏳ 次は '+a.name;
         subLabelEl.textContent = '開始まで';
-        valEl.textContent = (to<0?'+':'')+Math.floor(Math.abs(to)/60)+':'+String(Math.abs(to)%60).padStart(2,'0');
+        valEl.textContent = fmtHMS(p2.s*60 - nowSec());
         valEl.style.color = to<0 ? 'var(--color-bad)' : 'var(--color-ink)';
         targetEl.textContent = '開始予定 '+fmt(p2.s);
       }
@@ -953,7 +959,8 @@ function renderChui(){
       var last = STATE.feed[STATE.feed.length-1];
       var lm = Math.floor((now - Date.parse(last.ts))/60000);
       if(!isNaN(lm) && lm > S.cfg.silence){
-        rows.push({text:'⚠ 最終の記録から '+lm+'分 動きがありません', sev:'warn', w:4});
+        var ls = Math.floor((now - Date.parse(last.ts))/1000);
+        rows.push({text:'⚠ 最終の記録から '+lm+'分'+String(ls%60).padStart(2,'0')+'秒 動きがありません', sev:'warn', w:4});
       }
     }
   }
